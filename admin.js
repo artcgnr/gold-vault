@@ -267,6 +267,32 @@ document.getElementById('form-add-user').addEventListener('submit', async (e) =>
     window.hideLoader();
 });
 
+let showResignedUsers = false;
+
+window.toggleResignedUsers = () => {
+    showResignedUsers = !showResignedUsers;
+    const btn = document.getElementById('btn-toggle-users');
+    const title = document.getElementById('users-list-title');
+    const activeContainer = document.getElementById('active-users-container');
+    const resignedContainer = document.getElementById('resigned-users-container');
+
+    if (showResignedUsers) {
+        btn.classList.add('active');
+        btn.innerHTML = '<i class="fa-solid fa-users"></i> <span>View Active Users</span>';
+        title.textContent = 'Resigned Staff Members';
+        activeContainer.classList.add('hidden');
+        resignedContainer.classList.remove('hidden');
+        loadResignedUsers();
+    } else {
+        btn.classList.remove('active');
+        btn.innerHTML = '<i class="fa-solid fa-user-slash"></i> <span>View Resigned Users</span>';
+        title.textContent = 'User List';
+        resignedContainer.classList.add('hidden');
+        activeContainer.classList.remove('hidden');
+        loadUsers();
+    }
+};
+
 async function loadUsers() {
     console.log("loadUsers started");
     try {
@@ -284,7 +310,7 @@ async function loadUsers() {
             if (data.is_resigned) return; // Skip resigned
 
             const branchName = data.role === 'admin' ? 'Admin' : (branchMap[data.branch_id] || data.branch_id || '-');
-            
+
             let roleBadge = '';
             if (data.role === 'admin') roleBadge = '<span class="status-badge status-approved">Admin</span>';
             else if (data.role === 'user1') roleBadge = '<span class="status-badge status-pending" style="color:#3b82f6; background:rgba(59, 130, 246, 0.2)">User 1</span>';
@@ -488,12 +514,6 @@ async function loadStats(selectedDate = null) {
             });
 
             return `
-                <div class="stat-card glass-panel" style="grid-column: 1 / -1; background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6;">
-                    <div class="stat-info" style="display:flex; justify-content:space-between; align-items:center;">
-                        <h4 style="margin:0; color:#fff;"><i class="fa-solid fa-calendar-day"></i> Showing Stats For:</h4>
-                        <p style="margin:0; font-size:1.2em; font-weight:700; color:#3b82f6;">${formatDateDisplay(lastActiveDateStr)}</p>
-                    </div>
-                </div>
                 <div class="stat-card glass-panel">
                     <div class="stat-icon"><i class="fa-solid fa-building"></i></div>
                     <div class="stat-info">
@@ -730,7 +750,7 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {})
 
 window.deleteDeclaration = async (id) => {
     if (!confirm("Are you sure you want to delete this declaration? This will unlock the day for the branch. Proceed?")) return;
-    
+
     window.showLoader();
     try {
         await window.db.collection("declarations").doc(id).delete();
@@ -887,7 +907,7 @@ async function loadReturnedKeys() {
     try {
         console.log("Loading returned keys...");
         const snap = await window.db.collection("key_transfers").get();
-        
+
         const tbody = document.querySelector('#table-admin-returned-keys tbody');
         if (!tbody) return;
         tbody.innerHTML = '';
@@ -956,7 +976,7 @@ window.acceptResignationKey = async (transferId, userId, keyNumber) => {
         };
         if (userData.key1 === keyNumber) updates.key1 = null;
         if (userData.key2 === keyNumber) updates.key2 = null;
-        
+
         await window.db.collection("users").doc(userId).update(updates);
         console.log(`User ${userId} marked as resigned.`);
 
@@ -967,18 +987,18 @@ window.acceptResignationKey = async (transferId, userId, keyNumber) => {
         console.log(`Transfer ${transferId} marked as accepted.`);
 
         window.showToast("Key accepted and staff marked as resigned.", "success");
-        
+
         // Explicitly refresh all views
         await loadReturnedKeys();
-        await loadUsers(); 
+        await loadUsers();
         await loadResignedUsers();
-        await loadBranches(); 
+        await loadBranches();
 
         // Prompt to add new user
         if (confirm("Staff has resigned and key is now available. Would you like to add a new user to this branch now?")) {
             const transferDoc = await window.db.collection("key_transfers").doc(transferId).get();
             const branchId = transferDoc.data().branch_id;
-            
+
             document.getElementById('modal-add-user').classList.remove('hidden');
             const branchSelect = document.getElementById('new-user-branch');
             branchSelect.value = branchId;
@@ -1038,7 +1058,7 @@ async function loadAdminKeyHoldingsReport(filters = {}) {
                     if (senderUser) {
                         let displayName = data.receiver_name || 'Unknown';
                         let isResignation = data.transfer_type === 'resignation' || data.receiver_id === 'ADMIN';
-                        
+
                         if (isResignation) {
                             displayName = 'System Admin (Returned)';
                         }
@@ -1345,7 +1365,7 @@ async function loadResignedUsers() {
     try {
         console.log("Loading resigned users...");
         const snap = await window.db.collection("users").get();
-        
+
         const tbody = document.querySelector('#table-resigned-users tbody');
         if (!tbody) {
             console.error("Resigned users table body not found!");
@@ -1430,7 +1450,7 @@ async function loadAuditLogs() {
 
         // Client-side date filtering
         if (fromDateStr) {
-            const fDate = new Date(fromDateStr); fDate.setHours(0,0,0,0);
+            const fDate = new Date(fromDateStr); fDate.setHours(0, 0, 0, 0);
             logs = logs.filter(l => l.timestamp && l.timestamp.toDate() >= fDate);
         }
         if (toDateStr) {
@@ -1440,13 +1460,13 @@ async function loadAuditLogs() {
 
         tbody.innerHTML = logs.map(data => {
             const ts = data.timestamp ? data.timestamp.toDate().toLocaleString('en-GB') : 'N/A';
-            const actionBadge = `<span class="status-badge" style="background: rgba(0,0,0,0.05); color: #333; font-size:0.8em; margin-right:5px;">${data.type.toUpperCase()}</span>`;
+            const actionBadge = `<span class="status-badge" style="background: rgba(79, 240, 47, 0.75); color: #333; font-size:0.8em; margin-right:5px;">${data.type.toUpperCase()}</span>`;
             return `<tr>
-                <td style="font-size: 0.85em; white-space: nowrap; color: #666;">${ts}</td>
+                <td style="font-size: 0.85em; white-space: nowrap; color: #ffffffff;">${ts}</td>
                 <td><strong>${escapeHtml(data.user_name)}</strong><br><small class="text-muted" style="font-size:0.7em;">${(data.uid || '').substring(0, 8)}</small></td>
                 <td><span style="font-size:0.85em;">${escapeHtml(data.user_role)}</span></td>
                 <td>${actionBadge} <strong>${escapeHtml(data.action)}</strong></td>
-                <td style="font-size: 0.85em; color: #444;">${escapeHtml(data.details)}</td>
+                <td style="font-size: 0.85em; color: #ffffffff;">${escapeHtml(data.details)}</td>
             </tr>`;
         }).join('');
 

@@ -483,7 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const toggleSidebar = (show) => {
         if (show === undefined) show = !sidebar.classList.contains('active');
-        
+
         if (show) {
             sidebar.classList.add('active');
             overlay.classList.add('active');

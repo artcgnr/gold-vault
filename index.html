@@ -12,16 +12,16 @@
 
 <body>
     <div id="toast-container"></div>
-    <div id="loader" class="loader-overlay hidden">
+    <div id="loader" class="loader-overlay">
         <div class="spinner"></div>
     </div>
 
     <!-- LOGIN SECTION -->
-    <section id="login-section" class="active">
+    <section id="login-section">
         <div class="login-card glass-panel">
             <div class="logo">
                 <i class="fa-solid fa-vault"></i>
-                <h1>Gold Vault</h1>
+                <h>Gold Vault</h1>
             </div>
             <p class="subtitle">Locker Management System</p>
             <form id="login-form">
@@ -42,14 +42,11 @@
     <!-- MAIN APP CONTAINER -->
     <div id="main-app" class="hidden">
         <div class="sidebar-overlay" id="sidebar-overlay"></div>
-        <button class="menu-toggle" id="menu-toggle">
-            <i class="fa-solid fa-bars"></i>
-        </button>
 
-        <!-- ADD BRANCH MODAL -->
+        <!-- ADD BRANCH MODAL (Popup) -->
         <div id="modal-add-branch" class="loader-overlay hidden"
-            style="background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;">
-            <div class="card glass-panel" style="width: 500px; max-width: 90%; max-height: 90vh; overflow-y: auto;">
+            style="background: rgba(0, 0, 0, 0.884); display: flex; align-items: center; justify-content: center; z-index: 10000;">
+            <div class="card glass-panel" style="width: 90%; max-width: 70%; max-height: 90vh;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h3 style="margin: 0;">Add New Branch</h3>
                     <button class="btn btn-icon"
@@ -90,10 +87,10 @@
             </div>
         </div>
 
-        <!-- ADD USER MODAL -->
+        <!-- ADD USER MODAL (Popup) -->
         <div id="modal-add-user" class="loader-overlay hidden"
-            style="background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;">
-            <div class="card glass-panel" style="width: 500px; max-width: 90%; max-height: 90vh; overflow-y: auto;">
+            style="background: rgba(0, 0, 0, 0.884); display: flex; align-items: center; justify-content: center; z-index: 10000;">
+            <div class="card glass-panel" style="width: 1000px; max-width: 90%; max-height: 100vh;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h3 style="margin: 0;">Register User</h3>
                     <button class="btn btn-icon"
@@ -154,10 +151,10 @@
             </div>
         </div>
 
-        <!-- EDIT BRANCH MODAL -->
+        <!-- EDIT BRANCH MODAL (Popup) -->
         <div id="modal-edit-branch" class="loader-overlay hidden"
-            style="background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;">
-            <div class="card glass-panel" style="width: 400px; max-width: 90%;">
+            style="background: rgba(0, 0, 0, 0.884); display: flex; align-items: center; justify-content: center; z-index: 10000;">
+            <div class="card glass-panel" style="width: 1000px; max-width: 90%; max-height: 100vh;">
                 <h3>Edit Branch: <span id="edit-branch-name" class="text-primary"></span></h3>
                 <form id="form-edit-branch" class="grid-form mt-2">
                     <input type="hidden" id="edit-branch-id">
@@ -201,23 +198,21 @@
                 </form>
             </div>
         </div>
+
+        <!--- Navbar -->
         <nav class="sidebar glass-panel">
             <div class="logo-small">
                 <i class="fa-solid fa-vault"></i>
                 <h2>Gold Vault</h2>
             </div>
-
+            <!--admin navigation-->
             <div id="nav-admin" class="nav-links hidden">
                 <a href="#" class="nav-item active" data-target="admin-overview"><i class="fa-solid fa-chart-pie"></i>
                     Overview</a>
                 <a href="#" class="nav-item" data-target="admin-branches"><i class="fa-solid fa-building"></i>
                     Branches</a>
                 <a href="#" class="nav-item" data-target="admin-users"><i class="fa-solid fa-users"></i> Users</a>
-                <a href="#" class="nav-item" data-target="admin-resigned-users"><i class="fa-solid fa-user-slash"></i> Resigned Users</a>
-                <a href="#" class="nav-item" data-target="admin-audit-trail">
-                    <i class="fa-solid fa-list-check"></i>
-                    <span>Audit Trail</span>
-                </a>
+
                 <a href="#" class="nav-item" data-target="admin-reports"><i class="fa-solid fa-file-invoice"></i>
                     Reports</a>
                 <a href="#" class="nav-item" data-target="admin-key-reports"><i class="fa-solid fa-bolt"></i> Emergency
@@ -230,8 +225,12 @@
                         class="fa-solid fa-right-from-bracket"></i> Returned Keys</a>
                 <a href="#" class="nav-item" data-target="admin-backdate-approval"><i
                         class="fa-solid fa-calendar-check"></i> Backdate Approval</a>
+                <a href="#" class="nav-item" data-target="admin-audit-trail">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span>System Logs</span>
+                </a>
             </div>
-
+            <!--user1 navigation-->
             <div id="nav-user1" class="nav-links hidden">
                 <a href="#" class="nav-item active" data-target="user1-entry"><i class="fa-solid fa-pen-to-square"></i>
                     Daily Entry</a>
@@ -243,7 +242,7 @@
                     Reports</a>
                 <a href="#" class="nav-item" data-target="user-profile"><i class="fa-solid fa-user"></i> My Profile</a>
             </div>
-
+            <!--user2 navigation-->
             <div id="nav-user2" class="nav-links hidden">
                 <a href="#" class="nav-item active" data-target="user2-verify"><i class="fa-solid fa-check-double"></i>
                     Verifications</a>
@@ -274,12 +273,12 @@
             </div>
 
             <div class="user-profile">
+                <button id="logout-btn" class="btn btn-icon" title="Logout"><i
+                        class="fa-solid fa-power-off"></i></button>
                 <div class="user-info">
                     <p id="user-display-name">Loading...</p>
                     <small id="user-display-role">Role</small>
                 </div>
-                <button id="logout-btn" class="btn btn-icon" title="Logout"><i
-                        class="fa-solid fa-power-off"></i></button>
             </div>
         </nav>
 
@@ -289,8 +288,8 @@
                 <div class="content-container">
                     <header>
                         <div>
-                            <h2>System Overview</h2>
-                            <p class="text-muted">Total locker metrics across all branches.</p>
+                            <h3>System Overview</h3>
+                            <p style="font-size: 15px;" class="text-muted">Total locker metrics across all branches.</p>
                         </div>
                         <div style="display: flex; align-items: center; gap: 15px;">
                             <label for="admin-overview-date" style="font-size: 0.9rem; color: var(--text-muted);">View
@@ -299,14 +298,16 @@
                                 style="width: auto; padding: 5px 10px;">
                         </div>
                     </header>
-                    
+
                     <div id="overview-art-leasing" class="mt-4">
-                        <h3 style="color: var(--gold); border-bottom: 2px solid var(--gold); padding-bottom: 5px; margin-bottom: 15px;">ART LEASING</h3>
+                        <h4
+                            style="color: var(--gold); border-bottom: 2px solid var(--gold); padding-bottom: 5px; margin-bottom: 15px;">
+                            ART LEASING</h4>
                         <div class="stats-grid" id="admin-stats-grid-art">
                             <!-- Cards populated by JS -->
                         </div>
                         <div class="card glass-panel mt-4">
-                            <h3>Recent Declarations (ART LEASING)</h3>
+                            <h4>Recent Declarations (ART LEASING)</h4>
                             <div class="table-responsive">
                                 <table id="table-declarations-art">
                                     <thead>
@@ -332,12 +333,14 @@
                     </div>
 
                     <div id="overview-chegannur-nidhi" class="mt-4">
-                        <h3 style="color: var(--gold); border-bottom: 2px solid var(--gold); padding-bottom: 5px; margin-bottom: 15px;">CHEGANNUR NIDHI</h3>
+                        <h4
+                            style="color: var(--gold); border-bottom: 2px solid var(--gold); padding-bottom: 5px; margin-bottom: 15px;">
+                            CHEGANNUR NIDHI</h4>
                         <div class="stats-grid" id="admin-stats-grid-nidhi">
                             <!-- Cards populated by JS -->
                         </div>
                         <div class="card glass-panel mt-4">
-                            <h3>Recent Declarations (CHEGANNUR NIDHI)</h3>
+                            <h4>Recent Declarations (CHEGANNUR NIDHI)</h4>
                             <div class="table-responsive">
                                 <table id="table-declarations-nidhi">
                                     <thead>
@@ -368,11 +371,11 @@
                 <div class="content-container">
                     <header>
                         <div>
-                            <h2>Manage Branches</h2>
-                            <p class="text-muted">Add and monitor your branch locations.</p>
+                            <h3>Manage Branches</h3>
+                            <p style="font-size: 15px;" class="text-muted">Add and monitor your branch locations.</p>
                         </div>
                     </header>
-                    <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 1px;">
                         <button class="btn btn-primary"
                             onclick="document.getElementById('modal-add-branch').classList.remove('hidden')"><i
                                 class="fa-solid fa-plus"></i> Add New Branch</button>
@@ -406,19 +409,26 @@
                 <div class="content-container">
                     <header>
                         <div>
-                            <h2>Manage Users</h2>
-                            <p class="text-muted">Create branch users and assign roles.</p>
+                            <h3>Manage Users</h3>
+                            <p style="font-size: 15px;" class="text-muted">Create branch users and assign roles.</p>
                         </div>
                     </header>
-                    <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+                    <div
+                        style="display: flex; justify-content: flex-end; gap: 10px; align-items: center; margin-bottom: 1px;">
+                        <div class="user-filter-toggle">
+                            <button id="btn-toggle-users" class="btn btn-primary toggle-users"
+                                onclick="toggleResignedUsers()">
+                                <i class="fa-solid fa-user-slash"></i> <span>View Resigned Users</span>
+                            </button>
+                        </div>
                         <button class="btn btn-primary"
                             onclick="document.getElementById('modal-add-user').classList.remove('hidden')"><i
                                 class="fa-solid fa-user-plus"></i> Register User</button>
                     </div>
                     <div class="card glass-panel mt-4">
-                        <h3>User List</h3>
-                        <div class="table-responsive">
-                            <table id="table-users">
+                        <h3 id="users-list-title">User List</h3>
+                        <div class="table-responsive" id="active-users-container">
+                            <table id="table-users" class="user_table">
                                 <thead>
                                     <tr>
                                         <th>Name</th>
@@ -434,6 +444,21 @@
                                 <tbody></tbody>
                             </table>
                         </div>
+                        <div class="table-responsive hidden" id="resigned-users-container">
+                            <table id="table-resigned-users">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Prev. Role</th>
+                                        <th>Branch</th>
+                                        <th>Resigned On</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -441,26 +466,28 @@
             <div id="admin-backdate-approval" class="view-section hidden">
                 <header>
                     <div>
-                        <h2>Backdate Declaration Approval</h2>
-                        <p class="text-muted">Grant permission for branches to perform declarations for previous dates.
+                        <h3>Backdate Declaration Approval</h3>
+                        <p style="font-size: 15px;" class="text-muted">Grant permission for branches to perform
+                            declarations for previous dates.
                         </p>
                     </div>
                 </header>
                 <div class="card glass-panel">
                     <h3>Grant Approval</h3>
-                    <form id="form-backdate-approval" class="grid-form">
+                    <form id="form-backdate-approval" class="grid-form"
+                        style="display: flex; flex-direction: row; align-items: center;">
                         <div class="input-group">
                             <label>Select Branch</label>
-                            <select id="backdate-branch" required>
+                            <select id="backdate-branch" required style="width: 20vw;">
                                 <option value="" disabled selected>Select Branch...</option>
-                                <!-- Populated by JS -->
                             </select>
                         </div>
                         <div class="input-group">
                             <label>Select Date</label>
                             <input type="date" id="backdate-date" required>
                         </div>
-                        <div class="form-actions full-width">
+
+                        <div class="form-actions full-width" style="margin-top: 8px;">
                             <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check-circle"></i> Grant
                                 Approval</button>
                         </div>
@@ -489,8 +516,9 @@
             <div id="reserve-overview" class="view-section hidden">
                 <header>
                     <div>
-                        <h2>Reserve Dashboard</h2>
-                        <p class="text-muted">You do not have any assigned duties. You can gain temporary access if a
+                        <h3>Reserve Dashboard</h3>
+                        <p style="font-size: 15px;" class="text-muted">You do not have any assigned duties. You can gain
+                            temporary access if a
                             key is transferred to you.</p>
                     </div>
                 </header>
@@ -507,17 +535,18 @@
                 <div class="content-container">
                     <header>
                         <div>
-                            <h2 style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                            <h3 style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                                 Daily Entry
                                 <span id="u1-branch-name" class="badge"
                                     style="font-size: 0.6em; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 6px 16px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);"></span>
                                 <span id="u1-active-date" class="badge"
                                     style="font-size: 0.6em; background: rgba(255,255,255,0.1); color: var(--gold); border: 1px solid var(--gold); padding: 6px 16px; border-radius: 20px;"></span>
-                            </h2>
-                            <p class="text-muted">Enter locker transactions for today.</p>
+                            </h3>
+                            <p style="font-size: 15px;" class="text-muted">Enter locker transactions for today.</p>
                             <div class="branch-stats-bar mt-1"
                                 style="display: flex; gap: 20px; font-size: 0.85em; opacity: 0.8;">
-                                <span><i class="fa-solid fa-cubes"></i> Stock: <strong id="u1-total-stock">0</strong></span>
+                                <span><i class="fa-solid fa-cubes"></i> Stock: <strong
+                                        id="u1-total-stock">0</strong></span>
                                 <span><i class="fa-solid fa-money-bill-trend-up"></i> Loan: <strong
                                         id="u1-total-loan">₹0</strong></span>
                             </div>
@@ -569,14 +598,17 @@
                                 <div class="two-col-grid">
                                     <div class="input-group">
                                         <label>Total Gold Loan Outstanding (₹)</label>
-                                        <input type="number" id="loan-amount-input" required min="0" placeholder="e.g. 150000">
+                                        <input type="number" id="loan-amount-input" required min="0"
+                                            placeholder="e.g. 150000">
                                     </div>
                                     <div class="input-group">
                                         <label>Total Stock in Locker (Items)</label>
-                                        <input type="number" id="stock-amount-input" required min="0" placeholder="e.g. 215">
+                                        <input type="number" id="stock-amount-input" required min="0"
+                                            placeholder="e.g. 215">
                                     </div>
                                 </div>
-                                <button type="submit" class="btn btn-primary full-width"><i class="fa-solid fa-upload"></i>
+                                <button type="submit" class="btn btn-primary full-width"><i
+                                        class="fa-solid fa-upload"></i>
                                     Update Totals</button>
                             </form>
                         </div>
@@ -587,14 +619,17 @@
                                 <div class="two-col-grid">
                                     <div class="input-group">
                                         <label>Total Packets Appraised</label>
-                                        <input type="number" id="appraised-amount" required min="0" placeholder="e.g. 15">
+                                        <input type="number" id="appraised-amount" required min="0"
+                                            placeholder="e.g. 15">
                                     </div>
                                     <div class="input-group">
                                         <label>Total Not Appraised</label>
-                                        <input type="number" id="not-appraised-amount" required min="0" placeholder="e.g. 2">
+                                        <input type="number" id="not-appraised-amount" required min="0"
+                                            placeholder="e.g. 2">
                                     </div>
                                 </div>
-                                <button type="submit" class="btn btn-primary full-width"><i class="fa-solid fa-upload"></i>
+                                <button type="submit" class="btn btn-primary full-width"><i
+                                        class="fa-solid fa-upload"></i>
                                     Submit Appraisals</button>
                             </form>
                         </div>
@@ -666,7 +701,8 @@
                             <div class="icon-circle"><i class="fa-solid fa-file-signature"></i></div>
                             <div>
                                 <h3>End of Day Declaration</h3>
-                                <p>I confirm that all stock and cash entries for today are accurate and have been submitted
+                                <p>I confirm that all stock and cash entries for today are accurate and have been
+                                    submitted
                                     to the system.</p>
                             </div>
                         </div>
@@ -691,17 +727,18 @@
                 <div class="content-container">
                     <header>
                         <div>
-                            <h2 style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                            <h3 style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                                 Verifications
                                 <span id="u2-branch-name" class="badge"
                                     style="font-size: 0.6em; background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; padding: 6px 16px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.2);"></span>
                                 <span id="u2-active-date" class="badge"
                                     style="font-size: 0.6em; background: rgba(255,255,255,0.1); color: var(--gold); border: 1px solid var(--gold); padding: 6px 16px; border-radius: 20px;"></span>
-                            </h2>
-                            <p class="text-muted">Review and approve pending entries.</p>
+                            </h3>
+                            <p style="font-size: 15px;" class="text-muted">Review and approve pending entries.</p>
                             <div class="branch-stats-bar mt-1"
                                 style="display: flex; gap: 20px; font-size: 0.85em; opacity: 0.8;">
-                                <span><i class="fa-solid fa-cubes"></i> Stock: <strong id="u2-total-stock">0</strong></span>
+                                <span><i class="fa-solid fa-cubes"></i> Stock: <strong
+                                        id="u2-total-stock">0</strong></span>
                                 <span><i class="fa-solid fa-money-bill-trend-up"></i> Loan: <strong
                                         id="u2-total-loan">₹0</strong></span>
                             </div>
@@ -785,7 +822,8 @@
                             <div class="icon-circle"><i class="fa-solid fa-clipboard-check"></i></div>
                             <div>
                                 <h3>End of Day Declaration</h3>
-                                <p>I have verified all stock and physical cash in the locker. Everything matches the system
+                                <p>I have verified all stock and physical cash in the locker. Everything matches the
+                                    system
                                     records. I approve the end of day closing.</p>
                             </div>
                         </div>
@@ -809,8 +847,9 @@
             <div id="branch-key-transfer" class="view-section hidden">
                 <header>
                     <div>
-                        <h2>Key Transfer</h2>
-                        <p class="text-muted">Transfer keys between branch members after End of Day declarations.</p>
+                        <h3>Key Transfer</h3>
+                        <p style="font-size: 15px;" class="text-muted">Transfer keys between branch members after End of
+                            Day declarations.</p>
                     </div>
                 </header>
 
@@ -917,8 +956,8 @@
             <div id="user1-key-history" class="view-section hidden">
                 <header>
                     <div>
-                        <h2>Key Transfer History</h2>
-                        <p class="text-muted">View your key transfer history.</p>
+                        <h3>Key Transfer History</h3>
+                        <p style="font-size: 15px;" class="text-muted">View your key transfer history.</p>
                     </div>
                 </header>
                 <div class="card glass-panel">
@@ -946,8 +985,8 @@
             <div id="user2-key-history" class="view-section hidden">
                 <header>
                     <div>
-                        <h2>Key Transfer History</h2>
-                        <p class="text-muted">View your key transfer history.</p>
+                        <h3>Key Transfer History</h3>
+                        <p style="font-size: 15px;" class="text-muted">View your key transfer history.</p>
                     </div>
                 </header>
                 <div class="card glass-panel">
@@ -975,8 +1014,8 @@
             <div id="reserve-key-history" class="view-section hidden">
                 <header>
                     <div>
-                        <h2>Key Transfer History</h2>
-                        <p class="text-muted">View your key transfer history.</p>
+                        <h3>Key Transfer History</h3>
+                        <p style="font-size: 15px;" class="text-muted">View your key transfer history.</p>
                     </div>
                 </header>
                 <div class="card glass-panel">
@@ -1041,8 +1080,9 @@
                 <div class="content-container">
                     <header>
                         <div>
-                            <h2>System Reports</h2>
-                            <p class="text-muted">Historical daily declarations across all branches.</p>
+                            <h3>System Reports</h3>
+                            <p style="font-size: 15px;" class="text-muted">Historical daily declarations across all
+                                branches.</p>
                         </div>
                         <div class="report-header-actions">
                             <button class="btn btn-secondary"
@@ -1054,7 +1094,8 @@
                     </header>
                     <div class="card glass-panel mb-4">
                         <h3><i class="fa-solid fa-filter"></i> Filter Reports</h3>
-                        <form id="form-admin-filter-reports" class="mt-2" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+                        <form id="form-admin-filter-reports" class="mt-2"
+                            style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
                             <div class="input-group" style="margin-bottom: 0; min-width: 150px; flex: 1;">
                                 <label>Company</label>
                                 <select id="admin-filter-company">
@@ -1079,9 +1120,13 @@
                                     <input type="date" id="admin-filter-to">
                                 </div>
                             </div>
-                            <div class="form-actions" style="margin-bottom: 0; display: flex; gap: 10px; align-items: flex-end;">
-                                <button type="submit" class="btn btn-primary" style="height: 42px; display: flex; align-items: center;"><i class="fa-solid fa-check"></i> Apply Filters</button>
-                                <button type="button" id="btn-admin-filter-clear" class="btn btn-secondary" style="height: 42px; display: flex; align-items: center;">Clear</button>
+                            <div class="form-actions"
+                                style="margin-bottom: 0; display: flex; gap: 10px; align-items: flex-end;">
+                                <button type="submit" class="btn btn-primary"
+                                    style="height: 42px; display: flex; align-items: center;"><i
+                                        class="fa-solid fa-check"></i> Apply Filters</button>
+                                <button type="button" id="btn-admin-filter-clear" class="btn btn-secondary"
+                                    style="height: 42px; display: flex; align-items: center;">Clear</button>
                             </div>
                         </form>
                     </div>
@@ -1128,13 +1173,15 @@
                 <div class="content-container">
                     <header>
                         <div>
-                            <h2>Emergency Key Transfer</h2>
-                            <p class="text-muted">Initiate emergency key transfers between any branches.</p>
+                            <h3>Emergency Key Transfer</h3>
+                            <p style="font-size: 15px;" class="text-muted">Initiate emergency key transfers between any
+                                branches.</p>
                         </div>
                     </header>
 
                     <div class="card glass-panel mb-4">
-                        <h3><i class="fa-solid fa-triangle-exclamation text-danger"></i> Admin Emergency Key Transfer</h3>
+                        <h3><i class="fa-solid fa-triangle-exclamation text-danger"></i> Admin Emergency Key Transfer
+                        </h3>
                         <form id="form-admin-emergency-transfer" class="grid-form mt-2">
                             <div class="two-col-grid">
                                 <div class="input-group">
@@ -1193,7 +1240,8 @@
                                     placeholder="e.g. Emergency shift replacement">
                             </div>
                             <div class="form-actions full-width mt-2">
-                                <button type="submit" class="btn btn-danger"><i class="fa-solid fa-bolt"></i> Send Emergency
+                                <button type="submit" class="btn btn-danger"><i class="fa-solid fa-bolt"></i> Send
+                                    Emergency
                                     Transfer</button>
                             </div>
                         </form>
@@ -1206,8 +1254,9 @@
                 <div class="content-container">
                     <header>
                         <div>
-                            <h2>Key Transfer Reports</h2>
-                            <p class="text-muted">History of all key transfers across branches.</p>
+                            <h3>Key Transfer Reports</h3>
+                            <p style="font-size: 15px;" class="text-muted">History of all key transfers across branches.
+                            </p>
                         </div>
                         <div class="report-header-actions">
                             <button class="btn btn-secondary"
@@ -1269,8 +1318,9 @@
                 <div class="content-container">
                     <header>
                         <div>
-                            <h2>Daily Key Holdings</h2>
-                            <p class="text-muted">Audit user key assignments across branches.</p>
+                            <h3>Daily Key Holdings</h3>
+                            <p style="font-size: 15px;" class="text-muted">Audit user key assignments across branches.
+                            </p>
                         </div>
                         <div class="report-header-actions">
                             <button class="btn btn-secondary"
@@ -1281,24 +1331,27 @@
                     </header>
 
                     <div class="card glass-panel report-shell">
-                        <form id="form-admin-filter-key-holdings" class="grid-form mb-4">
-                            <div class="two-col-grid">
-                                <div class="input-group">
-                                    <label>Target Date</label>
-                                    <input type="date" id="admin-filter-holdings-date" required>
-                                </div>
-                                <div class="input-group">
-                                    <label>Branch Filter</label>
-                                    <select id="admin-filter-holdings-branch">
-                                        <option value="all">All Branches</option>
-                                    </select>
-                                </div>
+                        <form id="form-admin-filter-key-holdings" class="grid-form mb-4"
+                            style="display: flex; flex-direction: row; align-items: center;">
+
+                            <div class="input-group">
+                                <label>Branch Filter</label>
+                                <select id="admin-filter-holdings-branch" style="width: 20vw;">
+                                    <option value="all">All Branches</option>
+                                </select>
                             </div>
-                            <div class="form-actions mt-2" style="justify-content: flex-start; gap: 15px;">
-                                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Generate
+                            <div class="input-group">
+                                <label>Target Date</label>
+                                <input type="date" id="admin-filter-holdings-date" required>
+                            </div>
+                            <div class="form-actions mt-2" style="margin-bottom: 5px;">
+                                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i>
+                                    Generate
                                     Report</button>
                             </div>
+
                         </form>
+
                         <div class="table-responsive">
                             <table id="table-admin-key-holdings">
                                 <thead>
@@ -1323,8 +1376,8 @@
                 <div class="content-container">
                     <header>
                         <div>
-                            <h2>Returned Keys (Resignations)</h2>
-                            <p class="text-muted">Accept keys from resigning staff members.</p>
+                            <h3>Returned Keys (Resignations)</h3>
+                            <p style="font-size: 15px;" class="text-muted">Accept keys from resigning staff members.</p>
                         </div>
                     </header>
 
@@ -1353,8 +1406,9 @@
             <div id="user1-reports" class="view-section hidden">
                 <header>
                     <div>
-                        <h2>Branch Reports</h2>
-                        <p class="text-muted">Historical daily declarations for your branch.</p>
+                        <h3>Branch Reports</h3>
+                        <p style="font-size: 15px;" class="text-muted">Historical daily declarations for your branch.
+                        </p>
                     </div>
                     <div class="report-header-actions">
                         <button class="btn btn-secondary"
@@ -1404,8 +1458,9 @@
             <div id="user2-reports" class="view-section hidden">
                 <header>
                     <div>
-                        <h2>Branch Reports</h2>
-                        <p class="text-muted">Historical daily declarations for your branch.</p>
+                        <h3>Branch Reports</h3>
+                        <p style="font-size: 15px;" class="text-muted">Historical daily declarations for your branch.
+                        </p>
                     </div>
                     <div class="report-header-actions">
                         <button class="btn btn-secondary"
@@ -1432,7 +1487,6 @@
                             <thead>
                                 <tr>
                                     <th>Date</th>
-                                    <th>Branch</th>
                                     <th>Maker</th>
                                     <th>Checker</th>
                                     <th>Stock IN</th>
@@ -1451,10 +1505,10 @@
                 </div>
             </div>
 
-            <!-- EDIT USER MODAL -->
+            <!-- EDIT USER MODAL (popup) -->
             <div id="modal-edit-user" class="loader-overlay hidden"
-                style="background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;">
-                <div class="card glass-panel" style="width: 500px; max-width: 90%;">
+                style="background: rgba(0, 0, 0, 0.884); display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                <div class="card glass-panel" style="width: 1000px; max-width: 90%; max-height: 100vh;">
                     <h3>Edit User</h3>
                     <form id="form-edit-user" class="grid-form">
                         <input type="hidden" id="edit-user-id">
@@ -1506,52 +1560,26 @@
                 </div>
             </div>
 
-            <!-- ADMIN RESIGNED USERS VIEW -->
-            <div id="admin-resigned-users" class="view-section hidden">
-                <div class="content-container">
-                    <header>
-                        <div>
-                            <h2>Resigned Staff Members</h2>
-                            <p class="text-muted">History of staff who have resigned and returned their keys.</p>
-                        </div>
-                    </header>
 
-                    <div class="card glass-panel">
-                        <div class="table-responsive">
-                            <table id="table-resigned-users">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th>Prev. Role</th>
-                                        <th>Branch</th>
-                                        <th>Resigned On</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ADMIN AUDIT TRAIL VIEW -->
+            <!-- ADMIN SYSTEM LOGS VIEW -->
             <div id="admin-audit-trail" class="view-section hidden">
                 <div class="content-container">
                     <header>
                         <div>
-                            <h2>System Audit Trail</h2>
-                            <p class="text-muted">Track user activity, logins, and administrative changes.</p>
+                            <h3>System Logs</h3>
+                            <p style="font-size: 15px;" class="text-muted">Track user activity, logins, and
+                                administrative changes.</p>
                         </div>
                         <div class="report-header-actions">
-                            <button class="btn btn-secondary" onclick="loadAuditLogs()"><i class="fa-solid fa-sync"></i> Refresh Logs</button>
+                            <button class="btn btn-secondary" onclick="loadAuditLogs()"><i class="fa-solid fa-sync"></i>
+                                Refresh Logs</button>
                         </div>
                     </header>
 
                     <div class="card glass-panel">
                         <div class="filter-bar mb-4">
-                            <div class="grid-form" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                            <div class="grid-form"
+                                style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
                                 <div class="input-group">
                                     <label>Action Type</label>
                                     <select id="audit-filter-action">
@@ -1598,8 +1626,9 @@
                 <div class="content-container">
                     <header>
                         <div>
-                            <h2>My Profile</h2>
-                            <p class="text-muted">View your details and update your password.</p>
+                            <h3>My Profile</h3>
+                            <p style="font-size: 15px;" class="text-muted">View your details and update your password.
+                            </p>
                         </div>
                     </header>
                     <div class="two-col-grid">
