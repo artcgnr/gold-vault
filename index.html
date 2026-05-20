@@ -5,12 +5,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gold Vault - Locker Management System</title>
+    <!-- Add favicon -->
+    <link rel="icon" type="image/x-icon" href="/images/logo.png">
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
+    <!-- Premium Ambient Background Glows -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+
     <div id="toast-container"></div>
     <div id="loader" class="loader-overlay">
         <div class="spinner"></div>
@@ -1266,28 +1272,28 @@
                         </div>
                     </header>
                     <div class="card glass-panel report-shell">
-                        <form id="form-admin-filter-transfer-history" class="grid-form mb-4">
-                            <div class="two-col-grid">
-                                <div class="input-group">
-                                    <label>Branch Filter</label>
-                                    <select id="admin-filter-transfer-branch">
-                                        <option value="all">All Branches</option>
-                                    </select>
-                                </div>
-                                <div class="input-group" style="display: flex; gap: 10px;">
-                                    <div style="flex:1">
-                                        <label>From Date</label>
-                                        <input type="date" id="admin-filter-transfer-from">
-                                    </div>
-                                    <div style="flex:1">
-                                        <label>To Date</label>
-                                        <input type="date" id="admin-filter-transfer-to">
-                                    </div>
-                                </div>
+                        <form id="form-admin-filter-transfer-history" class="grid-form mb-4"
+                            style="display: flex; flex-direction: row; align-items: center;">
+
+                            <div class="input-group">
+                                <label>Branch Filter</label>
+                                <select id="admin-filter-transfer-branch" style="width: 20vw;">
+                                    <option value="all">All Branches</option>
+                                </select>
                             </div>
-                            <div class="form-actions mt-2" style="justify-content: flex-start; gap: 15px;">
-                                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Generate
-                                    Report</button>
+                            <div class="input-group" style="display: flex; gap: 10px;">
+                                <div>
+                                    <label>From Date</label>
+                                    <input type="date" id="admin-filter-transfer-from">
+                                </div>
+                                <div>
+                                    <label>To Date</label>
+                                    <input type="date" id="admin-filter-transfer-to">
+                                </div>
+                                <div class="form-actions mt-2" style="margin-top: 26px;">
+                                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i>
+                                        Generate Report</button>
+                                </div>
                             </div>
                         </form>
                         <div class="table-responsive">
