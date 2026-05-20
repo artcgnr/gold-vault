@@ -10,14 +10,12 @@
     --danger: #ef4444;
     --success: #10b981;
 }
-
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
     font-family: 'Outfit', sans-serif;
 }
-
 body {
     background: radial-gradient(circle at top right, #2c5aa5, #5c6c8d 80%);
     color: var(--text-main);
@@ -26,26 +24,21 @@ body {
     overflow-x: hidden;
     padding-left: 50px;
 }
-
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 4px;
     height: 4px;
 }
-
 ::-webkit-scrollbar-track {
     background: var(--glass-bg);
 }
-
 ::-webkit-scrollbar-thumb {
     background: #fbbf24;
     border-radius: 4px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
     background: var(--gold-hover);
 }
-
 /* Typography */
 h1,
 h2,
@@ -527,6 +520,13 @@ th {
 
 tbody tr:hover {
     background: rgba(255, 255, 255, 0.02);
+}
+
+.table-responsive table.admin-report td {
+    font-size: 12px;
+    font-weight: 400;
+    text-align: left;
+    text-transform: uppercase;
 }
 
 .status-badge {
