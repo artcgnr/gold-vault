@@ -626,7 +626,7 @@ window.printSingleDeclaration = async (branchId, dateStr) => {
                         </div>
                         <div class="print-total-card">
                             <span>Not Appraised Packets</span>
-                            <strong>${notAppraised} Items</strong>
+                            <strong>${notAppraised}</strong>
                         </div>
                     </div>
 
