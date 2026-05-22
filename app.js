@@ -5,7 +5,6 @@ const firebaseConfig = {
     storageBucket: "locker-manage.firebasestorage.app",
     messagingSenderId: "812684053866",
     appId: "1:812684053866:web:be21dc3859b3593d946913"
-
 };
 
 window.firebaseConfig = firebaseConfig;
@@ -211,7 +210,7 @@ if (isConfigured) {
                         return;
                     }
 
-                    if (window.currentUserData.role !== 'admin') {
+                    if (window.currentUserData.role !== 'admin' && window.currentUserData.role !== 'hr') {
                         const contexts = [];
 
                         // 1. Check if user SENT a key TEMPORARILY (Access Suspended)
@@ -398,8 +397,8 @@ function setupDashboard(userData) {
     const activeRoles = userData.active_roles || [userData.role];
 
     let roleDisplay = "Reserve User";
-    if (activeRoles.includes('admin')) {
-        roleDisplay = "Administrator";
+    if (activeRoles.includes('admin') || activeRoles.includes('hr')) {
+        roleDisplay = activeRoles.includes('admin') ? "Administrator" : "HR (Human Resources)";
     } else {
         const parts = [];
         if (activeRoles.includes('user1')) parts.push("Entry (Maker)");
@@ -414,7 +413,7 @@ function setupDashboard(userData) {
 
     document.getElementById('user-display-role').textContent = roleDisplay;
 
-    if (activeRoles.includes('admin')) {
+    if (activeRoles.includes('admin') || activeRoles.includes('hr')) {
         document.getElementById('nav-admin').classList.remove('hidden');
         switchView('admin-overview');
         document.dispatchEvent(new Event('initAdmin'));
@@ -475,6 +474,352 @@ function formatDateDisplay(dateStr) {
     return dateStr;
 }
 
+// Global A4 Branch Declaration Printing Function
+window.printSingleDeclaration = async (branchId, dateStr) => {
+    if (typeof window.showLoader === 'function') window.showLoader();
+    try {
+        const docId = branchId + "_" + dateStr;
+        const [branchDoc, declDoc] = await Promise.all([
+            window.db.collection("branches").doc(branchId).get(),
+            window.db.collection("declarations").doc(docId).get()
+        ]);
+
+        if (!branchDoc.exists) {
+            throw new Error("Branch metadata not found in system.");
+        }
+        if (!declDoc.exists) {
+            throw new Error("Declaration document not found for this date.");
+        }
+
+        const branchData = branchDoc.data();
+        const declData = declDoc.data();
+
+        const signerIds = [declData.user1_id, declData.user2_id].filter(Boolean);
+        const signerDocs = await Promise.all(
+            signerIds.map(userId => window.db.collection("users").doc(userId).get())
+        );
+        const signerDataById = {};
+        signerDocs.forEach((userDoc, index) => {
+            if (userDoc.exists) {
+                signerDataById[signerIds[index]] = userDoc.data();
+            }
+        });
+
+        // Fetch transactions for the day summary
+        const [stockSnap, cashSnap, appraisalSnap] = await Promise.all([
+            window.db.collection("stock_transactions").where("branch_id", "==", branchId).get(),
+            window.db.collection("cash_entries").where("branch_id", "==", branchId).get(),
+            window.db.collection("daily_appraisals").where("branch_id", "==", branchId).get()
+        ]);
+
+        const getDocDateKey = (data) => {
+            if (!data || !data.timestamp || typeof data.timestamp.toDate !== 'function') {
+                return data && typeof data.date === 'string' ? data.date : '';
+            }
+            const dateValue = data.timestamp.toDate();
+            const year = dateValue.getFullYear();
+            const month = String(dateValue.getMonth() + 1).padStart(2, '0');
+            const day = String(dateValue.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const stockInEntries = [];
+        const stockOutEntries = [];
+        stockSnap.forEach(d => {
+            const entry = d.data();
+            if (getDocDateKey(entry) !== dateStr) return;
+            const stockNum = entry.stock_number || 'Unknown';
+            if (entry.type === 'IN') stockInEntries.push(stockNum);
+            if (entry.type === 'OUT') stockOutEntries.push(stockNum);
+        });
+
+        let approvedCashTotal = declData.cash_total || 0;
+        let denoms = { '500': 0, '200': 0, '100': 0, '50': 0, '20': 0, '10': 0, 'coins': 0 };
+        cashSnap.forEach(d => {
+            const entry = d.data();
+            if (getDocDateKey(entry) !== dateStr) return;
+            if (entry.status === 'approved') {
+                approvedCashTotal = entry.total_amount || 0;
+                denoms = entry.denominations || denoms;
+            }
+        });
+
+        let appraised = declData.appraised || 0;
+        let notAppraised = declData.not_appraised || 0;
+        let appraisalStatus = 'Pending Approval';
+        appraisalSnap.forEach(d => {
+            const entry = d.data();
+            if (getDocDateKey(entry) !== dateStr) return;
+            if (entry.status === 'approved') {
+                appraised = entry.appraised || 0;
+                notAppraised = entry.not_appraised || 0;
+                appraisalStatus = 'Approved';
+            }
+        });
+
+        const totalStockInLocker = declData.total_stock !== undefined ? declData.total_stock : (branchData.total_stock || 0);
+        const outstandingLoan = declData.outstanding_loan !== undefined ? declData.outstanding_loan : (branchData.outstanding_loan || 0);
+
+        const formatCurrency = (val) => `₹${Number(val || 0).toLocaleString('en-IN')}`;
+        const formatSignatureTime = (timestampVal) => {
+            if (!timestampVal) return '';
+            try {
+                if (typeof timestampVal.toDate === 'function') {
+                    return timestampVal.toDate().toLocaleString('en-GB', { hour12: true });
+                }
+                if (timestampVal instanceof Date) {
+                    return timestampVal.toLocaleString('en-GB', { hour12: true });
+                }
+                return new Date(timestampVal).toLocaleString('en-GB', { hour12: true });
+            } catch (e) {
+                return 'N/A';
+            }
+        };
+
+        const u1Time = declData.user1_signed_at ? formatSignatureTime(declData.user1_signed_at) : (declData.timestamp ? formatSignatureTime(declData.timestamp) : '');
+        const u2Time = declData.user2_signed_at ? formatSignatureTime(declData.user2_signed_at) : (declData.timestamp ? formatSignatureTime(declData.timestamp) : '');
+
+        const getSignedKeys = (primaryKey, secondaryKey, userId, fallbackKey1, fallbackKey2) => {
+            const userData = signerDataById[userId] || {};
+            return {
+                key1: userData.key1 || primaryKey || fallbackKey1 || "N/A",
+                key2: userData.key2 || secondaryKey || fallbackKey2 || "N/A"
+            };
+        };
+        const makerKeys = getSignedKeys(declData.user1_key1, declData.user1_key2, declData.user1_id, branchData.key1, branchData.key2);
+        const checkerKeys = getSignedKeys(declData.user2_key1, declData.user2_key2, declData.user2_id, branchData.key1, branchData.key2);
+
+
+        const printContainer = document.getElementById('branch-declaration-print');
+        if (printContainer) {
+            printContainer.innerHTML = `
+                <div class="print-doc-container">
+                    <div class="print-header">
+                        <h1>${escapeHtml(branchData.company || "GOLD VAULT")}</h1>
+                        <h2>Declaration of Branch</h2>
+                        <p>Branch Name: <strong>${escapeHtml(branchData.name || "N/A")}</strong> | Locker Position: <strong>${escapeHtml(branchData.locker_number || "N/A")}</strong></p>
+                        <p>Report Date: <strong>${formatDateDisplay(dateStr)}</strong> | Generated: <strong>${new Date().toLocaleString('en-GB', { hour12: true })}</strong></p>
+                    </div>
+
+                    <div class="print-meta-grid">
+                        <div class="print-meta-item">
+                           <strong>Declaration Date:</strong> ${formatDateDisplay(dateStr)}<br> 
+                        </div>
+                        <div class="print-meta-item" style="text-align: right;">
+                            <strong>Status:</strong> COMPLETE
+                        </div>
+                    </div>
+
+                    <div class="print-section-title">Locker Position & Totals</div>
+                    <div class="print-totals-grid">
+                        <div class="print-total-card">
+                            <span>Total Cash Balance</span>
+                            <strong>${formatCurrency(approvedCashTotal)}</strong>
+                        </div>
+                        <div class="print-total-card">
+                            <span>Total No.of Stock</span>
+                            <strong>${totalStockInLocker}</strong>
+                        </div>
+                        <div class="print-total-card">
+                            <span>Gold Loan Outstanding</span>
+                            <strong>${formatCurrency(outstandingLoan)}</strong>
+                        </div>
+                        <div class="print-total-card">
+                            <span>Not Appraised Packets</span>
+                            <strong>${notAppraised} Items</strong>
+                        </div>
+                    </div>
+
+                    <div class="print-section-title">Daily Stock Transactions</div>
+                    <table class="print-data-table">
+                        <thead>
+                           <tr>
+                               <th style="width: 50%;">Stock IN</th>
+                               <th style="width: 50%;">Stock OUT</th>
+                           </tr>
+                        </thead>
+                        <tbody>
+                           <tr>
+                               <td>${stockInEntries.length > 0 ? stockInEntries.map(s => `<code>${escapeHtml(s)}</code>`).join(', ') : 'No stock items added (IN).'}</td>
+                               <td>${stockOutEntries.length > 0 ? stockOutEntries.map(s => `<code>${escapeHtml(s)}</code>`).join(', ') : 'No stock items removed (OUT).'}</td>
+                           </tr>
+                        </tbody>
+                    </table>
+
+                    <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; margin-top: 15px;">
+                        <div>
+                            <div class="print-section-title">Cash Denomination</div>
+                            <table class="print-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Denomination</th>
+                                        <th>Count</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>₹500</td>
+                                        <td>${denoms['500'] || 0}</td>
+                                        <td>${formatCurrency((denoms['500'] || 0) * 500)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>₹200</td>
+                                        <td>${denoms['200'] || 0}</td>
+                                        <td>${formatCurrency((denoms['200'] || 0) * 200)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>₹100</td>
+                                        <td>${denoms['100'] || 0}</td>
+                                        <td>${formatCurrency((denoms['100'] || 0) * 100)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>₹50</td>
+                                        <td>${denoms['50'] || 0}</td>
+                                        <td>${formatCurrency((denoms['50'] || 0) * 50)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>₹20</td>
+                                        <td>${denoms['20'] || 0}</td>
+                                        <td>${formatCurrency((denoms['20'] || 0) * 20)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>₹10</td>
+                                        <td>${denoms['10'] || 0}</td>
+                                        <td>${formatCurrency((denoms['10'] || 0) * 10)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Coins</td>
+                                        <td>-</td>
+                                        <td>${formatCurrency(denoms['coins'] || 0)}</td>
+                                    </tr>
+                                    <tr style="font-weight: bold; background-color: #f3f4f6;">
+                                        <td>Total Cash</td>
+                                        <td>-</td>
+                                        <td>${formatCurrency(approvedCashTotal)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div>
+                            <div class="print-section-title">Appraisals Summary</div>
+                            <table class="print-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Category</th>
+                                        <th>Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Appraised Packets</td>
+                                        <td>${appraised}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Not Appraised Packets</td>
+                                        <td>${notAppraised}</td>
+                                    </tr>
+                                    <tr style="font-weight: bold; background-color: #f3f4f6;">
+                                        <td>Total</td>
+                                        <td>${appraised + notAppraised}</td>
+                                    </tr>
+                                   
+                                </tbody>
+                            </table>
+
+                            <div style="margin-top: 15px; border: 1px dashed #000000; padding: 10px; font-size: 10px; line-height: 1.4;">
+                                <strong>Locker Declaration Compliance:</strong><br>
+                                This branch declaration is signed digitally by key holder. According to company policy, branch activities are not closed until both Maker and Checker physical key verifications are completed.
+                           </div>
+                        </div>
+                    </div>
+
+                    <div class="print-section-title">Digital Verification & Signatures</div>
+                    <div class="print-signatures-grid">
+                        <div class="print-signature-box complete">
+                            <span class="print-signature-badge">Maker Signed</span>
+                            <div class="box-title">Maker (User 1) Declaration</div>
+                            <div class="verification-details">
+                               <p><strong>Verified By:</strong> ${escapeHtml(declData.user1_name || "Maker")}</p>
+                               <p><strong>Assigned Key </strong> ${escapeHtml(makerKeys.key1)}</p>
+                               <p><strong>Signed At:</strong> ${u1Time || 'N/A'}</p>
+                            </div>
+                            <div class="signature-line">
+                                Digitally Certified by Maker
+                            </div>
+                        </div>
+
+                        <div class="print-signature-box complete">
+                            <span class="print-signature-badge">Checker Signed</span>
+                            <div class="box-title">Checker (User 2) Verification</div>
+                            <div class="verification-details">
+                               <p><strong>Verified By:</strong> ${escapeHtml(declData.user2_name || "Checker")}</p>
+                               <p><strong>Assigned Key:</strong> ${escapeHtml(checkerKeys.key2)}</p>
+                               <p><strong>Signed At:</strong> ${u2Time || 'N/A'}</p>
+                            </div>
+                            <div class="signature-line">
+                                Digitally Certified by Checker
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="print-section-title">Physical Signatures</div>
+                    <div class="print-signatures-grid" style="margin-top: 10px;">
+                        <div class="print-signature-box" style="height: 100px; display: flex; flex-direction: column; justify-content: flex-end;">
+                            <div class="signature-line" style="margin-top: 0;">
+                                ${escapeHtml(declData.user1_name)} Physical Signature
+                            </div>
+                        </div>
+                        <div class="print-signature-box" style="height: 100px; display: flex; flex-direction: column; justify-content: flex-end;">
+                            <div class="signature-line" style="margin-top: 0;">
+                                 ${escapeHtml(declData.user2_name)} Physical Signature
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="print-footer">
+                    <p>Branch Name: <strong>${escapeHtml(branchData.name || "N/A")}</strong> | Locker Position: <strong>${escapeHtml(branchData.locker_number || "N/A")}</strong></p>
+                        <p>Report Date: <strong>${formatDateDisplay(dateStr)}</strong> | Generated: <strong>${new Date().toLocaleString('en-GB', { hour12: true })}</strong></p>
+                       
+                    </div>
+                </div>
+            `;
+        }
+
+        document.body.setAttribute('data-print-section', 'branch-declaration-print');
+        window.print();
+        
+        if (!declData.print_taken && window.currentUserData && window.currentUserData.role !== 'admin' && window.currentUserData.role !== 'hr') {
+            await window.db.collection("declarations").doc(docId).update({
+                print_taken: true,
+                print_taken_at: firebase.firestore.FieldValue.serverTimestamp(),
+                print_taken_by: window.currentUser.uid
+            });
+            setTimeout(() => {
+                if (typeof loadBranchReports === 'function') {
+                    loadBranchReports('table-user1-reports');
+                    loadBranchReports('table-user2-reports');
+                }
+            }, 1000);
+        }
+
+        // Clean up attribute after print dialog finishes (or cancels)
+        setTimeout(() => {
+            document.body.removeAttribute('data-print-section');
+        }, 1000);
+
+    } catch (e) {
+        console.error("Print declaration error:", e);
+        if (typeof window.showToast === 'function') {
+            window.showToast(e.message, "error");
+        } else {
+            alert("Error generating print: " + e.message);
+        }
+    }
+    if (typeof window.hideLoader === 'function') window.hideLoader();
+};
+
 // Mobile Sidebar Toggle
 document.addEventListener('DOMContentLoaded', () => {
     const menuToggle = document.getElementById('menu-toggle');
@@ -509,3 +854,153 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+window.enableKeyTransferPrint = async (transferId) => {
+    if (!confirm('Are you sure you want to enable printing for this transfer receipt again?')) return;
+    window.showLoader();
+    try {
+        await window.db.collection('key_transfers').doc(transferId).update({
+            print_taken: false
+        });
+        window.showToast('Print enabled successfully.', 'success');
+        if (typeof loadAdminKeyReports === 'function') loadAdminKeyReports();
+    } catch(err) {
+        window.showToast(err.message, 'error');
+    }
+    window.hideLoader();
+};
+
+window.printKeyTransferReceipt = async (transferId, reloadAfter = false) => {
+    if (typeof window.showLoader === 'function') window.showLoader();
+    try {
+        const transferDoc = await window.db.collection('key_transfers').doc(transferId).get();
+        if (!transferDoc.exists) throw new Error('Transfer record not found.');
+        const data = transferDoc.data();
+
+        let senderBranchName = data.branch_id;
+        let receiverBranchName = data.receiver_branch_id;
+        try {
+            const [sb, rb] = await Promise.all([
+                window.db.collection('branches').doc(data.branch_id).get(),
+                window.db.collection('branches').doc(data.receiver_branch_id).get()
+            ]);
+            if (sb.exists) senderBranchName = sb.data().name || data.branch_id;
+            if (rb.exists) receiverBranchName = rb.data().name || data.receiver_branch_id;
+        } catch(e) {}
+
+        const formatTime = (ts) => {
+            if (!ts) return 'N/A';
+            return ts.toDate ? ts.toDate().toLocaleString('en-GB') : new Date(ts).toLocaleString('en-GB');
+        };
+
+        const printContainer = document.getElementById('key-transfer-print');
+        if (printContainer) {
+            printContainer.innerHTML = `
+                <div class="print-doc-container">
+                    <div class="print-header">
+                        <h1>ART GROUP</h1>
+                        <h2>Key Transfer & Return Receipt</h2>
+                        <p>Generated: <strong>${new Date().toLocaleString('en-GB')}</strong></p>
+                    </div>
+
+                    <div class="print-section-title">Transfer Details</div>
+                    <table class="print-data-table">
+                        <tbody>
+                            <tr>
+                                <td><strong>Key Number</strong></td>
+                                <td>${escapeHtml(data.key_number)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Transfer Type</strong></td>
+                                <td>${data.transfer_type === 'temporary' ? 'Temporary (' + data.from_date + ' to ' + data.to_date + ')' : 'Permanent'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Reason</strong></td>
+                                <td>${escapeHtml(data.reason)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Sender</strong></td>
+                                <td>${escapeHtml(data.sender_name)} (${escapeHtml(senderBranchName)})</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Receiver</strong></td>
+                                <td>${escapeHtml(data.receiver_name)} (${escapeHtml(receiverBranchName)})</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="print-section-title">DATE AND TIME</div>
+                    <table class="print-data-table">
+                        <tbody>
+                            <tr>
+                                <td><strong>Request Sent At</strong></td>
+                                <td>${formatTime(data.created_at)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Accepted At</strong></td>
+                                <td>${formatTime(data.accepted_at)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Returned At</strong></td>
+                                <td>${formatTime(data.returned_at)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="print-section-title">Signatures with name </div>
+                    <div class="print-signatures-grid" style="margin-top: 10px;">
+                        <div class="print-signature-box" style="height: 150px; display: flex; flex-direction: column; justify-content: flex-end;">
+                            <div class="signature-line" style="margin-top: 0;">
+                                ${escapeHtml(data.sender_name)} Signature
+                            </div>
+                        </div>
+                        <div class="print-signature-box" style="height: 150px; display: flex; flex-direction: column; justify-content: flex-end;">
+                            <div class="signature-line" style="margin-top: 0;">
+                                 ${escapeHtml(data.receiver_name)} Signature
+                            </div>
+                        </div>
+                          
+                    </div>
+                    <div class="print-section-title"> 
+                          </div>
+                </div>
+            `;
+        }
+
+        document.body.setAttribute('data-print-section', 'key-transfer-print');
+        window.print();
+        
+        if (!data.print_taken && window.currentUserData && window.currentUserData.role !== 'admin' && window.currentUserData.role !== 'hr') {
+            await window.db.collection('key_transfers').doc(transferId).update({
+                print_taken: true,
+                print_taken_at: firebase.firestore.FieldValue.serverTimestamp(),
+                print_taken_by: window.currentUser.uid
+            });
+        }
+
+        setTimeout(() => {
+            document.body.removeAttribute('data-print-section');
+            if (reloadAfter) {
+                window.location.reload();
+            } else {
+                if (typeof loadKeyTransferHistory === 'function') {
+                    loadKeyTransferHistory('table-key-history-user1');
+                    loadKeyTransferHistory('table-key-history-user2');
+                }
+                if (typeof loadAdminKeyReports === 'function' && (window.currentUserData.role === 'admin' || window.currentUserData.role === 'hr')) {
+                    loadAdminKeyReports();
+                }
+            }
+        }, 1000);
+
+    } catch (e) {
+        console.error("Print key transfer error:", e);
+        if (typeof window.showToast === 'function') {
+            window.showToast(e.message, "error");
+        } else {
+            alert("Error generating print: " + e.message);
+        }
+        if (reloadAfter) window.location.reload();
+    }
+    if (typeof window.hideLoader === 'function') window.hideLoader();
+};

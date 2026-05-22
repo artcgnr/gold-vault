@@ -71,6 +71,35 @@ document.addEventListener('initAdmin', async () => {
             loadAdminReports();
         });
     }
+
+    // Key Transfer Reports Filter & Branch Population
+    const filterTransferBranchSelect = document.getElementById('admin-filter-transfer-branch');
+    if (filterTransferBranchSelect) {
+        try {
+            const snap = await window.db.collection("branches").get();
+            // Clear but keep first option
+            filterTransferBranchSelect.innerHTML = '<option value="all">All Branches</option>';
+            snap.forEach(doc => {
+                const opt = document.createElement('option');
+                opt.value = doc.id;
+                opt.textContent = doc.data().name || doc.id;
+                filterTransferBranchSelect.appendChild(opt);
+            });
+        } catch (err) {
+            console.error("Error populating key transfer report branches:", err);
+        }
+    }
+
+    const transferFilterForm = document.getElementById('form-admin-filter-transfer-history');
+    if (transferFilterForm) {
+        transferFilterForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const branchId = document.getElementById('admin-filter-transfer-branch').value;
+            const fromDate = document.getElementById('admin-filter-transfer-from').value;
+            const toDate = document.getElementById('admin-filter-transfer-to').value;
+            loadAdminKeyReports({ branchId, fromDate, toDate });
+        });
+    }
 });
 
 document.getElementById('form-add-branch').addEventListener('submit', async (e) => {
@@ -232,8 +261,8 @@ document.getElementById('form-add-user').addEventListener('submit', async (e) =>
     const lockerNumber = document.getElementById('new-user-locker').value;
     const assignedKey = document.getElementById('new-user-key').value;
 
-    if (role !== 'admin' && !branchId) {
-        return window.showToast("Please select a branch for non-admin users.", "error");
+    if (role !== 'admin' && role !== 'hr' && !branchId) {
+        return window.showToast("Please select a branch for non-admin/HR users.", "error");
     }
 
     window.showLoader();
@@ -245,6 +274,7 @@ document.getElementById('form-add-user').addEventListener('submit', async (e) =>
         await window.db.collection("users").doc(newUserUid).set({
             name: name,
             email: email,
+            password: password,
             role: role,
             branch_id: branchId || null,
             locker_number: lockerNumber || null,
@@ -313,6 +343,7 @@ async function loadUsers() {
 
             let roleBadge = '';
             if (data.role === 'admin') roleBadge = '<span class="status-badge status-approved">Admin</span>';
+            else if (data.role === 'hr') roleBadge = '<span class="status-badge status-approved" style="background:#f59e0b;color:#fff;">HR</span>';
             else if (data.role === 'user1') roleBadge = '<span class="status-badge status-pending" style="color:#3b82f6; background:rgba(59, 130, 246, 0.2)">User 1</span>';
             else if (data.role === 'user2') roleBadge = '<span class="status-badge status-pending" style="color:#8b5cf6; background:rgba(139, 92, 246, 0.2)">User 2</span>';
             else roleBadge = '<span class="status-badge status-pending">Reserve</span>';
@@ -325,12 +356,12 @@ async function loadUsers() {
             const keyDisplay = keys.length ? keys.join(', ') : 'None';
 
             const tr = document.createElement('tr');
-            // Use safer onclick with escaped values
             const safeName = escapeHtml(data.name).replace(/'/g, "\\'");
             const safeRole = (data.role || '').replace(/'/g, "\\'");
             const safeBranch = (data.branch_id || '').replace(/'/g, "\\'");
             const safeKey1 = (data.key1 || '').replace(/'/g, "\\'");
             const safeKey2 = (data.key2 || '').replace(/'/g, "\\'");
+            const safeEmail = (data.email || '').replace(/'/g, "\\'");
 
             tr.innerHTML = `
                 <td><strong>${escapeHtml(data.name)}</strong></td>
@@ -341,7 +372,7 @@ async function loadUsers() {
                 <td>${escapeHtml(branchName)}</td>
                 <td>${statusBadge}</td>
                 <td>
-                    <button class="btn btn-secondary btn-sm" onclick="openEditUser('${docSnap.id}', '${safeName}', '${safeRole}', '${safeBranch}', '${safeKey1}', '${safeKey2}', false)" title="Edit User">
+                    <button class="btn btn-secondary btn-sm" onclick="openEditUser('${docSnap.id}', '${safeName}', '${safeRole}', '${safeBranch}', '${safeKey1}', '${safeKey2}', false, '${safeEmail}')" title="Edit User">
                         <i class="fa-solid fa-pen-to-square"></i>
                     </button>
                     <button class="btn btn-warning btn-sm" onclick="resetUserPassword('${data.email}')" title="Reset Password">
@@ -357,14 +388,37 @@ async function loadUsers() {
     }
 }
 
-window.openEditUser = (id, name, role, branchId, key1, key2, isResigned = false) => {
+window.resetUserPassword = async (email) => {
+    if (!email) {
+        window.showToast("Email address is required to reset password.", "error");
+        return;
+    }
+    if (!confirm(`Are you sure you want to send a password reset email to ${email}?`)) return;
+
+    window.showLoader();
+    try {
+        await window.auth.sendPasswordResetEmail(email);
+        window.showToast("Password reset email sent successfully!", "success");
+        if (typeof window.logAuditEvent === 'function') {
+            window.logAuditEvent("Admin Password Reset Sent", "admin", `Sent password reset email to: ${email}`);
+        }
+    } catch (err) {
+        window.showToast(err.message, "error");
+    }
+    window.hideLoader();
+};
+
+window.openEditUser = (id, name, role, branchId, key1, key2, isResigned = false, email = '') => {
     window.currentEditingUserId = id;
     window.currentEditingUserKey = key1;
+    window.currentEditingUserEmail = email;
 
     document.getElementById('edit-user-id').value = id;
     document.getElementById('edit-user-name').value = name;
     document.getElementById('edit-user-role').value = role;
     document.getElementById('edit-user-status').value = isResigned ? 'resigned' : 'active';
+    const pwdInput = document.getElementById('edit-user-password');
+    if (pwdInput) pwdInput.value = '';
 
     const branchSelect = document.getElementById('edit-user-branch');
     const newBranchSelect = document.getElementById('new-user-branch');
@@ -386,6 +440,18 @@ window.openEditUser = (id, name, role, branchId, key1, key2, isResigned = false)
     document.getElementById('modal-edit-user').classList.remove('hidden');
 };
 
+// Add event listener for the Reset Password button inside the Edit User modal
+const btnEditUserResetPassword = document.getElementById('btn-edit-user-reset-password');
+if (btnEditUserResetPassword) {
+    btnEditUserResetPassword.addEventListener('click', () => {
+        if (window.currentEditingUserEmail) {
+            window.resetUserPassword(window.currentEditingUserEmail);
+        } else {
+            window.showToast("No email found for this user.", "error");
+        }
+    });
+}
+
 document.getElementById('form-edit-user').addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('edit-user-id').value;
@@ -397,8 +463,8 @@ document.getElementById('form-edit-user').addEventListener('submit', async (e) =
     const status = document.getElementById('edit-user-status').value;
     const isResigned = (status === 'resigned');
 
-    if (role !== 'admin' && !branchId) {
-        return window.showToast("Please select a branch for non-admin users.", "error");
+    if (role !== 'admin' && role !== 'hr' && !branchId) {
+        return window.showToast("Please select a branch for non-admin/HR users.", "error");
     }
 
     window.showLoader();
@@ -410,6 +476,41 @@ document.getElementById('form-edit-user').addEventListener('submit', async (e) =
             locker_number: lockerNumber || null,
             is_resigned: isResigned
         };
+
+        const newPassword = document.getElementById('edit-user-password').value;
+        if (newPassword && newPassword.trim().length > 0) {
+            if (newPassword.trim().length < 6) {
+                window.hideLoader();
+                return window.showToast("Password must be at least 6 characters long.", "error");
+            }
+            
+            const userSnap = await window.db.collection("users").doc(id).get();
+            const userData = userSnap.data();
+            let currentPassword = userData.password;
+            const email = userData.email;
+            
+            if (!currentPassword) {
+                currentPassword = prompt(`This user was created without a saved password. Please enter the user's CURRENT password to allow changing it in the database, or click Cancel:`);
+                if (!currentPassword) {
+                    window.hideLoader();
+                    return;
+                }
+            }
+            
+            const secAppName = "UpdatePassApp" + Date.now();
+            const secondaryApp = firebase.initializeApp(window.firebaseConfig, secAppName);
+            try {
+                const userCreds = await secondaryApp.auth().signInWithEmailAndPassword(email, currentPassword);
+                await userCreds.user.updatePassword(newPassword);
+                updates.password = newPassword;
+                await secondaryApp.auth().signOut();
+                await secondaryApp.delete();
+            } catch (authErr) {
+                await secondaryApp.delete();
+                window.hideLoader();
+                return window.showToast("Authentication failed: " + authErr.message, "error");
+            }
+        }
 
         if (isResigned) {
             updates.key1 = null;
@@ -648,7 +749,7 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {})
     tbody.innerHTML = '';
 
     if (snap.empty) {
-        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding: 20px; color: #888;">No declarations found yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" style="text-align:center; padding: 20px; color: #888;">No declarations found yet.</td></tr>';
         return 0;
     }
 
@@ -687,7 +788,7 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {})
     }
 
     if (parsedDocs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding: 20px; color: #888;">No matches.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" style="text-align:center; padding: 20px; color: #888;">No matches.</td></tr>';
         return 0;
     }
 
@@ -702,6 +803,7 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {})
                 <td><span class="status-badge status-pending" style="color:#ef4444; background:rgba(239, 68, 68, 0.1);">Not Declared</span></td>
                 <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
                 <td style="vertical-align: top;"><span class="status-badge status-pending" style="color:#ef4444; background:rgba(239, 68, 68, 0.1);">Missing</span></td>
+                <td style="vertical-align: top; text-align: center;">-</td>
             </tr>`;
         }
 
@@ -723,10 +825,41 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {})
         const checkerInfo = data.user2_status === 'Signed' ? `<strong>${escapeHtml(data.user2_name || 'Signed')}</strong>${cKeyStr}` : '<span class="status-badge status-pending">Pending</span>';
         const finalStatus = data.user1_status === 'Signed' && data.user2_status === 'Signed' ? '<span class="status-badge status-approved">Complete</span>' : '<span class="status-badge status-pending">Incomplete</span>';
 
-        const actionHtml = data._id ? `
-            <button class="btn btn-icon btn-sm text-danger" onclick="deleteDeclaration('${data._id}')" title="Delete Declaration">
+        const isComplete = (data.user1_status === 'Signed' && data.user2_status === 'Signed');
+        let printBtnHtml = '';
+        if (isComplete && data.print_taken) {
+            printBtnHtml = `<button class="btn btn-icon btn-sm text-primary" onclick="window.printSingleDeclaration('${data.branch_id}', '${data.date}')" title="Print A4 Declaration" style="margin-right: 6px;">
+                <i class="fa-solid fa-print"></i>
+               </button>`;
+        } else if (isComplete && !data.print_taken) {
+            printBtnHtml = `<button class="btn btn-icon btn-sm" disabled style="opacity: 0.4; cursor: not-allowed; margin-right: 6px; color: #f59e0b;" title="Waiting for Branch to Print">
+                <i class="fa-solid fa-print"></i>
+               </button>`;
+        } else {
+            printBtnHtml = `<button class="btn btn-icon btn-sm" disabled style="opacity: 0.4; cursor: not-allowed; margin-right: 6px;" title="Pending Maker & Checker signatures">
+                <i class="fa-solid fa-print"></i>
+               </button>`;
+        }
+
+        const unlockPrintHtml = data.print_taken
+            ? `<button class="btn btn-icon btn-sm text-success" onclick="enableBranchPrint('${data._id}')" title="Re-enable Branch Print">
+                <i class="fa-solid fa-unlock"></i>
+               </button>`
+            : '';
+
+        let deleteBtn = '';
+        if (window.currentUserData && window.currentUserData.role === 'admin') {
+            deleteBtn = `<button class="btn btn-icon btn-sm text-danger" onclick="deleteDeclaration('${data._id}')" title="Delete Declaration">
                 <i class="fa-solid fa-trash-can"></i>
-            </button>
+            </button>`;
+        }
+
+        const actionHtml = data._id ? `
+            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                ${printBtnHtml}
+                ${unlockPrintHtml}
+                ${deleteBtn}
+            </div>
         ` : '-';
 
         return `<tr>
@@ -748,14 +881,96 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {})
     return rows.length;
 }
 
+window.enableBranchPrint = async (id) => {
+    if (!confirm("Are you sure you want to re-enable branch printing for this declaration?")) return;
+    
+    window.showLoader();
+    try {
+        await window.db.collection("declarations").doc(id).update({
+            print_taken: false
+        });
+        window.logAuditEvent("Admin Print Enable", "admin", `Re-enabled branch print for declaration ID: ${id}`);
+        window.showToast("Branch printing re-enabled.", "success");
+        loadDeclarations();
+        loadAdminReports();
+    } catch(err) {
+        window.showToast(err.message, "error");
+    }
+    window.hideLoader();
+};
+
 window.deleteDeclaration = async (id) => {
-    if (!confirm("Are you sure you want to delete this declaration? This will unlock the day for the branch. Proceed?")) return;
+    if (!confirm("Are you sure you want to delete this declaration? This will unlock the day for the branch and delete all associated entries (Stock, Cash, Appraisals, and Daily Totals). Proceed?")) return;
 
     window.showLoader();
     try {
+        const declDoc = await window.db.collection("declarations").doc(id).get();
+        if (declDoc.exists) {
+            const declData = declDoc.data();
+            const branchId = declData.branch_id;
+            const dateStr = declData.date;
+
+            if (branchId && dateStr) {
+                const [stockSnap, cashSnap, appraisalSnap, totalsSnap] = await Promise.all([
+                    window.db.collection("stock_transactions").where("branch_id", "==", branchId).get(),
+                    window.db.collection("cash_entries").where("branch_id", "==", branchId).get(),
+                    window.db.collection("daily_appraisals").where("branch_id", "==", branchId).get(),
+                    window.db.collection("daily_totals").where("branch_id", "==", branchId).where("date", "==", dateStr).get()
+                ]);
+
+                const deletePromises = [];
+                let stockChange = 0;
+
+                stockSnap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (getDocDateKey(data) === dateStr) {
+                        if (data.status === 'approved') {
+                            if (data.type === 'IN') {
+                                stockChange -= 1;
+                            } else if (data.type === 'OUT') {
+                                stockChange += 1;
+                            }
+                        }
+                        deletePromises.push(window.db.collection("stock_transactions").doc(docSnap.id).delete());
+                    }
+                });
+
+                cashSnap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (getDocDateKey(data) === dateStr) {
+                        deletePromises.push(window.db.collection("cash_entries").doc(docSnap.id).delete());
+                    }
+                });
+
+                appraisalSnap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (getDocDateKey(data) === dateStr) {
+                        deletePromises.push(window.db.collection("daily_appraisals").doc(docSnap.id).delete());
+                    }
+                });
+
+                totalsSnap.forEach(docSnap => {
+                    deletePromises.push(window.db.collection("daily_totals").doc(docSnap.id).delete());
+                });
+
+                if (stockChange !== 0) {
+                    deletePromises.push(
+                        window.db.collection("branches").doc(branchId).update({
+                            total_stock: firebase.firestore.FieldValue.increment(stockChange)
+                        })
+                    );
+                }
+
+                if (deletePromises.length > 0) {
+                    await Promise.all(deletePromises);
+                    window.logAuditEvent("Admin Declaration Children Deleted", "deletion", `Deleted ${deletePromises.length} associated entries (Stock, Cash, Appraisals, Totals) for branch ${branchId} on ${dateStr}`);
+                }
+            }
+        }
+
         await window.db.collection("declarations").doc(id).delete();
         window.logAuditEvent("Admin Declaration Deleted", "deletion", `Deleted declaration ID: ${id}`);
-        window.showToast("Declaration deleted successfully.", "success");
+        window.showToast("Declaration and associated entries deleted successfully.", "success");
         loadDeclarations();
         loadAdminReports();
         loadStats();
@@ -833,6 +1048,9 @@ async function loadAdminReports(filters = {}) {
 }
 
 async function loadAdminKeyReports(filters = {}) {
+    if (filters instanceof Event || !filters) {
+        filters = {};
+    }
     try {
         const snap = await window.db.collection("key_transfers").orderBy("created_at", "desc").get();
         const tbody = document.querySelector('#table-admin-key-reports tbody');
@@ -855,15 +1073,30 @@ async function loadAdminKeyReports(filters = {}) {
             const data = docSnap.data();
             const typeInfo = data.transfer_type === 'temporary' ? `Temp (${data.from_date} to ${data.to_date})` : 'Permanent';
             let statusBadge = data.status === 'accepted' ? '<span class="status-badge status-approved">Accepted</span>' :
-                (data.status === 'returned' ? '<span class="status-badge">Returned</span>' :
+                (data.status === 'returned' ? '<span class="status-badge" style="background:#6b7280;color:#fff;">Returned</span>' :
                     (data.status === 'rejected' || data.status === 'deleted' ? '<span class="status-badge status-pending" style="color:red">Deleted</span>' : '<span class="status-badge status-pending">Pending</span>'));
+            
+            let actionHtml = '-';
+            if (data.status === 'returned') {
+                if (data.print_taken) {
+                    actionHtml = `<button class="btn btn-icon btn-sm text-primary" onclick="window.enableKeyTransferPrint('${docSnap.id}')" style="display:block;"><i class="fa-solid fa-unlock"></i></button>
+                                  <button class="btn btn-icon btn-sm text-primary" onclick="window.printKeyTransferReceipt('${docSnap.id}')" style="display:block;"><i class="fa-solid fa-print"></i></button>`;
+                } else {
+                    actionHtml = `<button class="btn btn-icon btn-sm text-primary" onclick="window.printKeyTransferReceipt('${docSnap.id}')" style="display:block;"><i class="fa-solid fa-print"></i></button>`;
+                }
+            }
+
             return `<tr>
                 <td>${data.created_at ? data.created_at.toDate().toLocaleString('en-GB') : 'N/A'}</td>
                 <td>${data.accepted_at ? data.accepted_at.toDate().toLocaleString('en-GB') : '-'}</td>
                 <td>${data.returned_at ? data.returned_at.toDate().toLocaleString('en-GB') : '-'}</td>
-                <td>${escapeHtml(data.sender_name)}</td><td>${escapeHtml(data.receiver_name)}</td>
-                <td>${escapeHtml(data.key_number)}</td><td>${escapeHtml(typeInfo)}</td><td>${escapeHtml(data.reason)}</td>
-                <td>${statusBadge}</td><td>-</td>
+                <td>${escapeHtml(data.sender_name)}</td>
+                <td>${escapeHtml(data.receiver_name)}</td>
+                <td>${escapeHtml(data.key_number)}</td>
+                <td>${escapeHtml(typeInfo)}</td>
+                <td>${escapeHtml(data.reason)}</td>
+                <td>${statusBadge}</td>
+                <td style="vertical-align: center;">${actionHtml}</td>
             </tr>`;
         }).join('');
     } catch (err) { console.error(err); }
@@ -1325,17 +1558,20 @@ async function loadBackdateApprovals() {
                 const approvedAt = data.approved_at ? data.approved_at.toDate().toLocaleString('en-GB') : 'N/A';
                 const statusClass = data.status === 'approved' ? 'status-approved' : 'status-pending';
 
+                let deleteBtnHtml = '';
+                if (window.currentUserData && window.currentUserData.role === 'admin') {
+                    deleteBtnHtml = `<button class="btn btn-icon" onclick="deleteBackdateApproval('${docSnap.id}')" title="Delete Approval">
+                                        <i class="fa-solid fa-trash"></i>
+                                     </button>`;
+                }
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${branchName}</strong></td>
                     <td>${data.date}</td>
                     <td class="text-muted" style="font-size:0.9em;">${approvedAt}</td>
                     <td><span class="status-badge ${statusClass}">${data.status}</span></td>
-                    <td>
-                        <button class="btn btn-icon" onclick="deleteBackdateApproval('${docSnap.id}')" title="Delete Approval">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </td>
+                    <td>${deleteBtnHtml}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -1385,7 +1621,7 @@ async function loadResignedUsers() {
 
             count++;
             // Try to get branch name from map, then from the user record directly if stored, then ID
-            const branchName = data.role === 'admin' ? 'N/A' : (branchMap[data.branch_id] || data.branch_name || data.branch_id || '-');
+            const branchName = (data.role === 'admin' || data.role === 'hr') ? 'N/A' : (branchMap[data.branch_id] || data.branch_name || data.branch_id || '-');
             const resignedDt = data.resigned_at ? data.resigned_at.toDate().toLocaleString('en-GB') : 'N/A';
 
             const tr = document.createElement('tr');
@@ -1396,6 +1632,8 @@ async function loadResignedUsers() {
             const safeKey1 = (data.key1 || '').replace(/'/g, "\\'");
             const safeKey2 = (data.key2 || '').replace(/'/g, "\\'");
 
+            const safeEmail = (data.email || '').replace(/'/g, "\\'");
+
             tr.innerHTML = `
                 <td><strong>${escapeHtml(data.name)}</strong></td>
                 <td>${escapeHtml(data.email)}</td>
@@ -1403,7 +1641,7 @@ async function loadResignedUsers() {
                 <td>${escapeHtml(branchName)}</td>
                 <td>${resignedDt}</td>
                 <td>
-                    <button class="btn btn-secondary btn-sm" onclick="openEditUser('${docSnap.id}', '${safeName}', '${safeRole}', '${safeBranch}', '${safeKey1}', '${safeKey2}', true)" title="View/Edit Details">
+                    <button class="btn btn-secondary btn-sm" onclick="openEditUser('${docSnap.id}', '${safeName}', '${safeRole}', '${safeBranch}', '${safeKey1}', '${safeKey2}', true, '${safeEmail}')" title="View/Edit Details">
                         <i class="fa-solid fa-eye"></i> View
                     </button>
                 </td>
@@ -1475,8 +1713,4 @@ async function loadAuditLogs() {
     }
     window.hideLoader();
 }
-
 window.loadAuditLogs = loadAuditLogs;
-
-
-

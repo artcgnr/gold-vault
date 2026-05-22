@@ -56,7 +56,7 @@ h3 {
 }
 
 .mt-2 {
-    margin-top: 1rem;
+    margin-top: .5rem;
 }
 
 .mt-4 {
@@ -481,7 +481,7 @@ header h2 {
 
 .card h4,
 .card h3 {
-    margin-bottom: .8rem;
+    margin-bottom: .6rem;
     font-size: 1.25rem;
     color: var(--gold);
 }
@@ -926,7 +926,7 @@ tbody tr:hover {
     }
 
     header {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
     }
 
     .stats-grid {
@@ -979,7 +979,7 @@ tbody tr:hover {
     }
 
     .card {
-        margin-bottom: 1rem;
+        margin-bottom: .5rem;
     }
 
     .nav-links {
@@ -1012,4 +1012,245 @@ tbody tr:hover {
     background: linear-gradient(135deg, rgba(95, 8, 8, 0.822), rgba(239, 68, 68, 0.993));
     border-color: rgba(239, 68, 68, 0.3);
     color: #ffffff;
+}
+
+/* ==========================================
+   A4 BRANCH DECLARATION PRINTING
+   ========================================== */
+
+#branch-declaration-print,
+#key-transfer-print {
+    display: none;
+}
+
+@media print {
+    body[data-print-section="branch-declaration-print"] #main-app,
+    body[data-print-section="branch-declaration-print"] #login-section,
+    body[data-print-section="branch-declaration-print"] .sidebar,
+    body[data-print-section="branch-declaration-print"] #toast-container,
+    body[data-print-section="branch-declaration-print"] #loader,
+    body[data-print-section="key-transfer-print"] #main-app,
+    body[data-print-section="key-transfer-print"] #login-section,
+    body[data-print-section="key-transfer-print"] .sidebar,
+    body[data-print-section="key-transfer-print"] #toast-container,
+    body[data-print-section="key-transfer-print"] #loader {
+        display: none !important;
+    }
+
+    body[data-print-section="branch-declaration-print"],
+    body[data-print-section="key-transfer-print"] {
+        background: #ffffff !important;
+        color: #000000 !important;
+        display: block !important;
+        min-height: auto !important;
+        overflow: visible !important;
+        padding-left: 0 !important;
+    }
+
+    body[data-print-section="branch-declaration-print"] #branch-declaration-print,
+    body[data-print-section="key-transfer-print"] #key-transfer-print {
+        display: block !important;
+        width: 100% !important;
+        max-width: 210mm !important;
+        margin: 0 auto !important;
+        padding: 10mm !important;
+        box-sizing: border-box;
+        background: #ffffff !important;
+        color: #000000 !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    }
+
+    .print-doc-container {
+        width: 100%;
+        color: #000000;
+        background-color: #ffffff;
+    }
+
+    .print-header {
+        text-align: center;
+        border-bottom: 3px double #000000;
+        padding-bottom: 8px;
+        margin-bottom: 10px;
+    }
+
+    .print-header h1 {
+        font-size: 22px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin: 0 0 5px 0;
+        color: #000000 !important;
+    }
+
+    .print-header h2 {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 0 0 8px 0;
+        color: #374151 !important;
+        text-transform: uppercase;
+    }
+
+    .print-header p {
+        font-size: 11px;
+        margin: 2px 0;
+        color: #4b5563 !important;
+    }
+
+    .print-meta-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 10px;
+        border: 1px solid #000000;
+        padding: 6px;
+        background-color: #f9fafb !important;
+    }
+
+    .print-meta-item {
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    .print-meta-item strong {
+        font-weight: 700;
+    }
+
+    .print-section-title {
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        border-bottom: 1.5px solid #000000;
+        padding-bottom: 3px;
+        margin: 10px 0 4px 0;
+        color: #000000 !important;
+        letter-spacing: 0.5px;
+    }
+
+    .print-data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 8px;
+    }
+
+    .print-data-table th {
+        background-color: #f3f4f6 !important;
+        color: #000000 !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+        font-size: 10px;
+        border: 1px solid #000000 !important;
+        padding: 5px 7px !important;
+        text-align: left;
+    }
+
+    .print-data-table td {
+        border: 1px solid #000000 !important;
+        padding: 5px 7px !important;
+        font-size: 11px;
+        color: #000000 !important;
+    }
+
+    .print-data-table tr:nth-child(even) {
+        background-color: #f9fafb !important;
+    }
+
+    .print-totals-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .print-total-card {
+        border: 1px solid #000000;
+        padding: 6px;
+        text-align: center;
+        background-color: #f9fafb !important;
+    }
+
+    .print-total-card span {
+        display: block;
+        font-size: 9px;
+        text-transform: uppercase;
+        color: #4b5563 !important;
+        margin-bottom: 3px;
+        font-weight: 700;
+    }
+
+    .print-total-card strong {
+        font-size: 14px;
+        color: #000000 !important;
+        font-weight: 700;
+    }
+
+    .print-signatures-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 15px;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .print-signature-box {
+        border: 1px solid #000000;
+        padding: 8px;
+        background-color: #ffffff !important;
+        position: relative;
+    }
+
+    .print-signature-box.complete {
+        border: 1.5px solid #047857;
+    }
+
+    .print-signature-box .box-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 2px;
+    }
+
+    .print-signature-box .signature-line {
+        border-top: 1px dashed #9ca3af;
+        margin-top: 20px;
+        padding-top: 2px;
+        text-align: center;
+        font-size: 10px;
+        color: #4b5563 !important;
+    }
+
+    .print-signature-box .verification-details {
+        font-size: 10px;
+        line-height: 1.5;
+        margin-top: 8px;
+    }
+
+    .print-signature-box .verification-details p {
+        margin: 2px 0;
+    }
+
+    .print-signature-badge {
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        background-color: #d1fae5 !important;
+        color: #065f46 !important;
+        border: 1px solid #a7f3d0;
+        padding: 1px 5px;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        border-radius: 3px;
+    }
+
+    .print-footer {
+        margin-top: 15px;
+        border-top: 1px solid #e5e7eb;
+        padding-top: 4px;
+        text-align: center;
+        font-size: 9px;
+        color: #6b7280 !important;
+    }
 }

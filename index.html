@@ -123,6 +123,7 @@
                             <option value="user1">User 1 (Entry / Maker)</option>
                             <option value="user2">User 2 (Verifier / Checker)</option>
                             <option value="user">Reserve User (No default duties)</option>
+                            <option value="hr">HR (Human Resources)</option>
                             <option value="admin">Administrator</option>
                         </select>
                     </div>
@@ -330,6 +331,7 @@
                                             <th>Total Stock</th>
                                             <th>Outstanding Loan</th>
                                             <th>Status</th>
+                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
@@ -363,6 +365,7 @@
                                             <th>Total Stock</th>
                                             <th>Outstanding Loan</th>
                                             <th>Status</th>
+                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
@@ -859,15 +862,16 @@
                     </div>
                 </header>
 
-                <div id="key-transfer-blocked" class="card glass-panel hidden"
-                    style="border-left: 4px solid #ef4444; background: rgba(239, 68, 68, 0.05);">
-                    <h3 class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> Action Blocked</h3>
-                    <p>You must complete and sign today's End of Day declaration before you can transfer a key.</p>
-                </div>
+                <div class="two-col-grid">
+                    <!-- LEFT COLUMN: BLOCKED BANNER OR INITIATE FORM -->
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <div id="key-transfer-blocked" class="card glass-panel hidden"
+                            style="border-left: 4px solid #ef4444; background: rgba(239, 68, 68, 0.05); margin-top: 0; margin-bottom: 0;">
+                            <h3 class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> Action Blocked</h3>
+                            <p>You must complete and sign today's End of Day declaration before you can transfer a key.</p>
+                        </div>
 
-                <div id="key-transfer-form-container" class="hidden">
-                    <div class="two-col-grid">
-                        <div class="card glass-panel">
+                        <div id="key-transfer-form-container" class="card glass-panel hidden" style="margin-top: 0; margin-bottom: 0;">
                             <h3><i class="fa-solid fa-paper-plane text-primary"></i> Initiate Transfer</h3>
                             <form id="form-key-transfer">
                                 <div class="input-group">
@@ -911,51 +915,53 @@
                                     <input type="text" id="key-transfer-reason" required
                                         placeholder="e.g. Shift change">
                                 </div>
-                                <button type="submit" class="btn btn-primary full-width"><i
+                                <button type="submit" class="btn btn-primary full-width" style="margin-top: 15px;"><i
                                         class="fa-solid fa-arrow-right"></i> Send Key Request</button>
                             </form>
                         </div>
                     </div>
-                </div>
 
-                <div class="card glass-panel mt-4">
-                    <h3><i class="fa-solid fa-inbox text-success"></i> Pending Incoming Requests</h3>
-                    <div class="table-responsive">
-                        <table id="table-incoming-keys">
-                            <thead>
-                                <tr>
-                                    <th>Date & Time</th>
-                                    <th>From User</th>
-                                    <th>Key #</th>
-                                    <th>Type & Dates</th>
-                                    <th>Reason</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                    <!-- RIGHT COLUMN: PENDING INCOMING AND ACTIVE KEYS (ALWAYS VISIBLE) -->
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <div class="card glass-panel" style="margin-top: 0; margin-bottom: 0;">
+                            <h3><i class="fa-solid fa-inbox text-success"></i> Pending Incoming Requests</h3>
+                            <div class="table-responsive">
+                                <table id="table-incoming-keys">
+                                    <thead>
+                                        <tr>
+                                            <th>Date & Time</th>
+                                            <th>From User</th>
+                                            <th>Key #</th>
+                                            <th>Type & Dates</th>
+                                            <th>Reason</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="card glass-panel" style="margin-top: 0; margin-bottom: 0;">
+                            <h3><i class="fa-solid fa-key text-warning"></i> My Active Temporary Keys</h3>
+                            <div class="table-responsive">
+                                <table id="table-active-keys">
+                                    <thead>
+                                        <tr>
+                                            <th>Date Accepted</th>
+                                            <th>From</th>
+                                            <th>Branch</th>
+                                            <th>Key #</th>
+                                            <th>Duration</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <div class="card glass-panel mt-4">
-                    <h3><i class="fa-solid fa-key text-warning"></i> My Active Temporary Keys</h3>
-                    <div class="table-responsive">
-                        <table id="table-active-keys">
-                            <thead>
-                                <tr>
-                                    <th>Date Accepted</th>
-                                    <th>From</th>
-                                    <th>Branch</th>
-                                    <th>Key #</th>
-                                    <th>Duration</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
-
             </div>
 
             <!-- USER1 KEY HISTORY VIEW -->
@@ -979,6 +985,7 @@
                                     <th>Accept Time</th>
                                     <th>Return Time</th>
                                     <th>Status</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -1008,6 +1015,7 @@
                                     <th>Accept Time</th>
                                     <th>Return Time</th>
                                     <th>Status</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -1037,6 +1045,7 @@
                                     <th>Accept Time</th>
                                     <th>Return Time</th>
                                     <th>Status</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -1090,16 +1099,10 @@
                             <p style="font-size: 15px;" class="text-muted">Historical daily declarations across all
                                 branches.</p>
                         </div>
-                        <div class="report-header-actions">
-                            <button class="btn btn-secondary"
-                                onclick="window.downloadReportExcel('admin-reports', 'system-reports')"><i
-                                    class="fa-solid fa-file-excel"></i> Download Excel</button>
-                            <button class="btn btn-secondary" onclick="window.printReport('admin-reports')"><i
-                                    class="fa-solid fa-print"></i> Print Report</button>
-                        </div>
+                        
                     </header>
                     <div class="card glass-panel mb-4">
-                        <h4><i class="fa-solid fa-filter"></i> Filter Reports</h4>
+                        <h4>Filter Reports</h4>
                         <form id="form-admin-filter-reports" class="mt-2"
                             style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
                             <div class="input-group" style="margin-bottom: 0; min-width: 150px; flex: 1;">
@@ -1165,6 +1168,7 @@
                                         <th>Total Stock</th>
                                         <th>Outstanding Loan</th>
                                         <th>Status</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -1264,12 +1268,7 @@
                             <p style="font-size: 15px;" class="text-muted">History of all key transfers across branches.
                             </p>
                         </div>
-                        <div class="report-header-actions">
-                            <button class="btn btn-secondary"
-                                onclick="window.downloadReportExcel('admin-transfer-history', 'transfer-history-report')">
-                                <i class="fa-solid fa-file-excel"></i> Export Excel
-                            </button>
-                        </div>
+                        
                     </header>
                     <div class="card glass-panel report-shell">
                         <form id="form-admin-filter-transfer-history" class="grid-form mb-4"
@@ -1452,6 +1451,7 @@
                                     <th>Total Stock</th>
                                     <th>Outstanding Loan</th>
                                     <th>Status</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -1493,6 +1493,7 @@
                             <thead>
                                 <tr>
                                     <th>Date</th>
+                                    <th>Branch</th>
                                     <th>Maker</th>
                                     <th>Checker</th>
                                     <th>Stock IN</th>
@@ -1503,6 +1504,7 @@
                                     <th>Total Stock</th>
                                     <th>Outstanding Loan</th>
                                     <th>Status</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -1528,6 +1530,7 @@
                                 <option value="user1">User 1 (Entry / Maker)</option>
                                 <option value="user2">User 2 (Verifier / Checker)</option>
                                 <option value="user">Reserve User (No default duties)</option>
+                                <option value="hr">HR (Human Resources)</option>
                                 <option value="admin">Administrator</option>
                             </select>
                         </div>
@@ -1557,7 +1560,11 @@
                                 <option value="resigned">Resigned</option>
                             </select>
                         </div>
-                        <div class="form-actions mt-3" style="justify-content: flex-end; gap: 10px;">
+                        <div class="input-group">
+                            <label>Change Password</label>
+                            <input type="password" id="edit-user-password" placeholder="Leave blank to keep unchanged">
+                        </div>
+                        <div class="form-actions mt-3" style="grid-column: span 2; justify-content: flex-end; gap: 10px;">
                             <button type="button" class="btn btn-secondary"
                                 onclick="document.getElementById('modal-edit-user').classList.add('hidden')">Cancel</button>
                             <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -1686,9 +1693,12 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
+    <!-- A4 Branch Declaration Print Section -->
+    <div id="branch-declaration-print"></div>
+    <!-- A4 Key Transfer Print Section -->
+    <div id="key-transfer-print"></div>
     <script src="app.js?v=4"></script>
     <script src="admin.js?v=4"></script>
     <script src="branch.js?v=4"></script>
 </body>
-
 </html>

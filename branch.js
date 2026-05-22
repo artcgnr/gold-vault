@@ -124,7 +124,7 @@ async function loadUser1Entries() {
                 const txDateObj = d.timestamp && typeof d.timestamp.toDate === 'function' ? d.timestamp.toDate() : new Date();
                 
                 if (txDateObj >= startOfDay && txDateObj <= endOfDay) {
-                    entries.push({ id: doc.id, collection: 'daily_appraisals', time: txDateObj, type: 'Appraisals', details: d.appraised + ' Appraised', status: d.status });
+                    entries.push({ id: doc.id, collection: 'daily_appraisals', time: txDateObj, type: 'Appraisals', details: `${d.appraised} Appraised, ${d.not_appraised || 0} Not Appraised`, status: d.status });
                     if (btnAppraisals) { btnAppraisals.disabled = true; btnAppraisals.innerHTML = 'Submitted for Date'; }
                 }
             });
@@ -467,6 +467,7 @@ document.getElementById('btn-u1-declare').addEventListener('click', async () => 
             user1_status: "Signed",
             user1_key1: key1,
             user1_key2: key2,
+            user1_signed_at: window.activeBackdate ? new Date(window.activeBackdate + 'T12:00:00') : new Date(),
             stock_in: stockIn,
             stock_out: stockOut,
             cash_total: cashTotal,
@@ -798,6 +799,7 @@ document.getElementById('btn-u2-declare').addEventListener('click', async () => 
             user2_status: "Signed",
             user2_key1: key1,
             user2_key2: key2,
+            user2_signed_at: window.activeBackdate ? new Date(window.activeBackdate + 'T12:00:00') : new Date(),
             date: date,
             timestamp: window.activeBackdate ? new Date(window.activeBackdate + 'T12:00:00') : firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
@@ -851,7 +853,7 @@ async function loadBranchReports(tableId) {
         window.updateReportHeader(reportSectionId, summaryText);
 
         if (docs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding: 20px; color: #888;">No reports available.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="13" style="text-align:center; padding: 20px; color: #888;">No reports available.</td></tr>';
             window.hideLoader();
             return;
         }
@@ -964,11 +966,23 @@ async function loadBranchReports(tableId) {
                 outstandingLoan = tData.outstanding_loan !== undefined ? tData.outstanding_loan : outstandingLoan;
             }
             
-            const finalStatus = (data.user1_status === 'Signed' && data.user2_status === 'Signed')
+            const isComplete = (data.user1_status === 'Signed' && data.user2_status === 'Signed');
+            const finalStatus = isComplete
                 ? '<span class="status-badge status-approved">Complete</span>'
                 : '<span class="status-badge status-pending">Incomplete</span>';
             const makerInfo = data.user1_status === 'Signed' ? escapeHtml(data.user1_name || 'Signed') : 'Pending';
             const checkerInfo = data.user2_status === 'Signed' ? escapeHtml(data.user2_name || 'Signed') : 'Pending';
+
+            let printBtnHtml = '';
+            const isAdmin = window.currentUserData.role === 'admin';
+            
+            if (!isComplete) {
+                printBtnHtml = `<button class="btn btn-secondary btn-sm" disabled style="padding: 4px 10px; font-size: 12px; opacity: 0.5; cursor: not-allowed; display: inline-flex; align-items: center; gap: 4px;" title="Pending Maker & Checker signatures"><i class="fa-solid fa-print"></i> Print</button>`;
+            } else if (data.print_taken && !isAdmin) {
+                printBtnHtml = `<span class="status-badge" style="background: rgba(107, 114, 128, 0.2); color: #6b7280; font-size: 11px;"><i class="fa-solid fa-check"></i> Printed</span>`;
+            } else {
+                printBtnHtml = `<button class="btn btn-primary btn-sm" onclick="window.printSingleDeclaration('${rowBranchId}', '${data.date}')" style="padding: 4px 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-print"></i> Print</button>`;
+            }
 
             return `
                 <tr>
@@ -984,6 +998,7 @@ async function loadBranchReports(tableId) {
                     <td>${totalStockInLocker}</td>
                     <td>${formatCurrencyValue(outstandingLoan)}</td>
                     <td style="vertical-align: top;">${finalStatus}</td>
+                    <td style="vertical-align: top; text-align: center;">${printBtnHtml}</td>
                 </tr>
             `;
         }));
@@ -1328,8 +1343,12 @@ window.returnTemporaryKey = async function(transferId) {
             status: 'returned',
             returned_at: firebase.firestore.FieldValue.serverTimestamp()
         });
-        window.showToast("Key returned successfully. Refreshing permissions...", "success");
-        setTimeout(() => window.location.reload(), 1000);
+        window.showToast("Key returned successfully. Generating printout...", "success");
+        if (typeof window.printKeyTransferReceipt === 'function') {
+            await window.printKeyTransferReceipt(transferId, true);
+        } else {
+            setTimeout(() => window.location.reload(), 1000);
+        }
     } catch(err) {
         window.showToast(err.message, "error");
         window.hideLoader();
@@ -1363,8 +1382,17 @@ window.openAcceptKeyModal = async (transferId, keyNumber, senderName) => {
     document.getElementById('modal-accept-key').classList.remove('hidden');
 
     try {
-        const branchId = window.currentUserData.branch_id;
-        const dateStr = new Date().toISOString().split('T')[0];
+        const transferDoc = await window.db.collection("key_transfers").doc(transferId).get();
+        if (!transferDoc.exists) throw new Error("Transfer not found");
+        
+        const transferData = transferDoc.data();
+        const branchId = transferData.branch_id; // Sender's branch
+        
+        let dateStr = new Date().toISOString().split('T')[0];
+        if (transferData.created_at) {
+            dateStr = transferData.created_at.toDate().toISOString().split('T')[0];
+        }
+        
         const docId = branchId + "_" + dateStr;
         const decl = await window.db.collection("declarations").doc(docId).get();
         
@@ -1480,8 +1508,8 @@ async function loadKeyTransferHistory(tableId) {
     ]);
 
     const uniqueMap = new Map();
-    sentSnap.forEach(doc => uniqueMap.set(doc.id, doc.data()));
-    receivedSnap.forEach(doc => uniqueMap.set(doc.id, doc.data()));
+    sentSnap.forEach(doc => { const d = doc.data(); d.id = doc.id; uniqueMap.set(doc.id, d); });
+    receivedSnap.forEach(doc => { const d = doc.data(); d.id = doc.id; uniqueMap.set(doc.id, d); });
     
     let docs = Array.from(uniqueMap.values());
     docs.sort((a, b) => {
@@ -1515,6 +1543,15 @@ async function loadKeyTransferHistory(tableId) {
         else if (data.status === 'returned') statusBadge = '<span class="status-badge" style="background:#6b7280;color:#fff;">Returned</span>';
         else if (data.status === 'rejected') statusBadge = '<span class="status-badge status-rejected">Rejected</span>';
 
+        let actionHtml = '-';
+        if (data.status === 'returned') {
+            if (data.print_taken && window.currentUserData.role !== 'admin') {
+                actionHtml = `<span class="status-badge" style="background: rgba(107, 114, 128, 0.2); color: #6b7280; font-size: 11px;"><i class="fa-solid fa-check"></i> Printed</span>`;
+            } else {
+                actionHtml = `<button class="btn btn-primary btn-sm" onclick="window.printKeyTransferReceipt('${data.id}')"><i class="fa-solid fa-print"></i> Print</button>`;
+            }
+        }
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${dt}</td>
@@ -1525,6 +1562,7 @@ async function loadKeyTransferHistory(tableId) {
             <td>${acceptTime}</td>
             <td>${returnTime}</td>
             <td>${statusBadge}</td>
+            <td>${actionHtml}</td>
         `;
         tbody.appendChild(tr);
     });
