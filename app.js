@@ -598,7 +598,7 @@ window.printSingleDeclaration = async (branchId, dateStr) => {
                         <h1>${escapeHtml(branchData.company || "GOLD VAULT")}</h1>
                         <h2>Declaration of Branch</h2>
                         <p>Branch Name: <strong>${escapeHtml(branchData.name || "N/A")}</strong> | Locker Position: <strong>${escapeHtml(branchData.locker_number || "N/A")}</strong></p>
-                        <p>Report Date: <strong>${formatDateDisplay(dateStr)}</strong> | Generated: <strong>${new Date().toLocaleString('en-GB', { hour12: true })}</strong></p>
+                        <p>Report Date: <strong>${formatDateDisplay(dateStr)}</strong> | Printed on: <strong>${new Date().toLocaleString('en-GB', { hour12: true })}</strong></p>
                     </div>
 
                     <div class="print-meta-grid">
@@ -728,7 +728,7 @@ window.printSingleDeclaration = async (branchId, dateStr) => {
                                 </tbody>
                             </table>
 
-                            <div style="margin-top: 15px; border: 1px dashed #000000; padding: 10px; font-size: 10px; line-height: 1.4;">
+                            <div style="margin-top: 15px; color: red; border: 1px dashed #000000; padding: 10px; font-size: 10px; line-height: 1.4;">
                                 <strong>Locker Declaration Compliance:</strong><br>
                                 This branch declaration is signed digitally by key holder. According to company policy, branch activities are not closed until both Maker and Checker physical key verifications are completed.
                            </div>
