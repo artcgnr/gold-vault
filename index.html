@@ -1700,5 +1700,13 @@
     <script src="app.js?v=4"></script>
     <script src="admin.js?v=4"></script>
     <script src="branch.js?v=4"></script>
+    <script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const inputs = document.querySelectorAll('input');
+    inputs.forEach(input => {
+      input.setAttribute('autocomplete', 'off');
+    });
+  });
+</script>
 </body>
 </html>
