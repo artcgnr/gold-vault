@@ -16,35 +16,32 @@
     <!-- Premium Ambient Background Glows -->
     <div class="bg-glow bg-glow-1"></div>
     <div class="bg-glow bg-glow-2"></div>
-
     <div id="toast-container"></div>
     <div id="loader" class="loader-overlay">
         <div class="spinner"></div>
     </div>
-
     <!-- LOGIN SECTION -->
     <section id="login-section">
         <div class="login-card glass-panel">
             <div class="logo">
-                <i class="fa-solid fa-vault"></i>
+                <i class="fa-solid fa-vault" style="font-size: 2.5rem; color: var(--primary);"></i>
                 <h>Gold Vault</h1>
             </div>
             <p class="subtitle">Locker Management System</p>
             <form id="login-form">
                 <div class="input-group">
                     <label for="login-email">Email</label>
-                    <input type="email" id="login-email" required placeholder="admin@goldvault.com" autocomplete="off">
+                    <input type="email" id="login-email" required placeholder="admin@goldvault.com">
                 </div>
                 <div class="input-group">
                     <label for="login-password">Password</label>
-                    <input type="password" id="login-password" required placeholder="••••••••" autocomplete="off">
+                    <input type="password" id="login-password" required placeholder="••••••••">
                 </div>
-                <button type="submit" class="btn btn-primary btn-block">Sign In <i
+                <button type="submit" class="btn btn-primary btn-block" style="height: 40px;">Sign In <i
                         class="fa-solid fa-arrow-right"></i></button>
             </form>
         </div>
     </section>
-
     <!-- MAIN APP CONTAINER -->
     <div id="main-app" class="hidden">
         <div class="sidebar-overlay" id="sidebar-overlay"></div>
@@ -120,11 +117,11 @@
                         <label>Role</label>
                         <select id="new-user-role" required>
                             <option value="" disabled selected>Select Role</option>
+                            <option value="admin">Administrator</option>
+                            <option value="hr">HR (Human Resources)</option>
+                            <option value="user">Reserve User (No default duties)</option>
                             <option value="user1">User 1 (Entry / Maker)</option>
                             <option value="user2">User 2 (Verifier / Checker)</option>
-                            <option value="user">Reserve User (No default duties)</option>
-                            <option value="hr">HR (Human Resources)</option>
-                            <option value="admin">Administrator</option>
                         </select>
                     </div>
                     <div class="input-group">
@@ -205,7 +202,6 @@
                 </form>
             </div>
         </div>
-
         <!--- Navbar -->
         <nav class="sidebar glass-panel">
             <div class="logo-small">
@@ -339,7 +335,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div id="overview-chegannur-nidhi" class="mt-4">
                         <h4
                             style="color: var(--gold); border-bottom: 2px solid var(--gold); padding-bottom: 5px; margin-bottom: 15px;">
@@ -384,25 +379,36 @@
                             <p style="font-size: 15px;" class="text-muted">Add and monitor your branch locations.</p>
                         </div>
                     </header>
-                    <div style="display: flex; justify-content: flex-end; margin-bottom: 1px;">
-                        <button class="btn btn-primary"
-                            onclick="document.getElementById('modal-add-branch').classList.remove('hidden')"><i
-                                class="fa-solid fa-plus"></i> Add New Branch</button>
-                    </div>
-                    <div class="card glass-panel mt-4">
-                        <h3>Branch List</h3>
+                    <div class="card glass-panel mb-4">
+                        <div class="mt-2"
+                            style="display: flex; gap: 15px; justify-content: space-between; align-items: flex-end; flex-wrap: wrap;">
+                            <div class="input-group" style="margin-bottom: 0; min-width: 160px;">
+                                <label for="branch-filter-company">Filter by Company</label>
+                                <select id="branch-filter-company" style="width: 15vw;">
+                                    <option value="all">All Companies</option>
+                                    <option value="ART LEASING">ART LEASING</option>
+                                    <option value="CHEGANNUR NIDHI">CHEGANNUR NIDHI</option>
+                                </select>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-primary"
+                                    onclick="document.getElementById('modal-add-branch').classList.remove('hidden')"><i
+                                        class="fa-solid fa-plus"></i> Add New Branch</button> 
+                                    </div>
+                                </div>                    
+                    <div style="margin-top: 18px;">
                         <div class="table-responsive">
                             <table id="table-branches">
-                                <thead>
-                                    <tr>
-                                        <th>Branch Name</th>
+                                <thead >
+                                    <tr style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
+                                        <th>Branch</th>
                                         <th>Company</th>
                                         <th>Locker #</th>
                                         <th>Key 1</th>
                                         <th>Key 2</th>
                                         <th>Total Stock</th>
-                                        <th>Physical Cash (₹)</th>
-                                        <th>Outstanding Loan (₹)</th>
+                                        <th>Cash (₹)</th>
+                                        <th>Outstanding(₹)</th>
                                         <th>Added On</th>
                                         <th>Actions</th>
                                     </tr>
@@ -413,7 +419,8 @@
                     </div>
                 </div>
             </div>
-
+            </div>
+            <!----Manage Users-------------->
             <div id="admin-users" class="view-section hidden">
                 <div class="content-container">
                     <header>
@@ -422,24 +429,30 @@
                             <p style="font-size: 15px;" class="text-muted">Create branch users and assign roles.</p>
                         </div>
                     </header>
-                    <div
-                        style="display: flex; justify-content: flex-end; gap: 10px; align-items: center; margin-bottom: 1px;">
-                        <div class="user-filter-toggle">
-                            <button id="btn-toggle-users" class="btn btn-primary toggle-users"
-                                onclick="toggleResignedUsers()">
-                                <i class="fa-solid fa-user-slash"></i> <span>View Resigned Users</span>
-                            </button>
-                        </div>
-                        <button class="btn btn-primary"
-                            onclick="document.getElementById('modal-add-user').classList.remove('hidden')"><i
-                                class="fa-solid fa-user-plus"></i> Register User</button>
-                    </div>
-                    <div class="card glass-panel mt-4">
-                        <h3 id="users-list-title">User List</h3>
+
+                    <div class="card glass-panel mb-4">
+                        <div class="mt-2"
+                            style="display: flex; gap: 15px; justify-content: space-between; align-items: flex-end; flex-wrap: wrap;">
+                            <div class="input-group" style="margin-bottom: 0; min-width: 160px;">
+                                <label for="user-branch-filter-company">Search User</label>
+                                <input type="search" auto-complete="off" id="user-branch-filter-search" placeholder="Username..." style="width: 20vw;">
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button id="btn-toggle-users" class="btn btn-primary"
+                                    onclick="toggleResignedUsers()">
+                                    <i class="fa-solid fa-user-slash"></i> <span>View Resigned Users</span>
+                                </button>
+                                <button class="btn btn-primary"
+                                    onclick="document.getElementById('modal-add-user').classList.remove('hidden')">
+                                    <i class="fa-solid fa-user-plus"></i> Register User
+                                </button>
+                            </div>
+                    </div>                  
+                        <div style="margin-top: 18px;">
                         <div class="table-responsive" id="active-users-container">
                             <table id="table-users" class="user_table">
                                 <thead>
-                                    <tr>
+                                    <tr style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                         <th>Name</th>
                                         <th>Locker #</th>
                                         <th>Assigned Key</th>
@@ -456,7 +469,7 @@
                         <div class="table-responsive hidden" id="resigned-users-container">
                             <table id="table-resigned-users">
                                 <thead>
-                                    <tr>
+                                    <tr style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                         <th>Name</th>
                                         <th>Email</th>
                                         <th>Prev. Role</th>
@@ -471,7 +484,8 @@
                     </div>
                 </div>
             </div>
-
+            </div>
+            <!----backdate approval---->
             <div id="admin-backdate-approval" class="view-section hidden">
                 <header>
                     <div>
@@ -482,17 +496,16 @@
                     </div>
                 </header>
                 <div class="card glass-panel">
-                    <h3>Grant Approval</h3>
                     <form id="form-backdate-approval" class="grid-form"
                         style="display: flex; flex-direction: row; align-items: center;">
                         <div class="input-group">
-                            <label>Select Branch</label>
+                            <label>Branch</label>
                             <select id="backdate-branch" required style="width: 20vw;">
                                 <option value="" disabled selected>Select Branch...</option>
                             </select>
                         </div>
                         <div class="input-group">
-                            <label>Select Date</label>
+                            <label>Date</label>
                             <input type="date" id="backdate-date" required>
                         </div>
 
@@ -500,10 +513,7 @@
                             <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check-circle"></i> Grant
                                 Approval</button>
                         </div>
-                    </form>
-                </div>
-                <div class="card glass-panel mt-4">
-                    <h3>Active & Recent Approvals</h3>
+                    </form> 
                     <div class="table-responsive">
                         <table id="table-backdate-approvals">
                             <thead>
@@ -520,7 +530,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- RESERVE USER VIEWS -->
             <div id="reserve-overview" class="view-section hidden">
                 <header>
@@ -538,7 +547,6 @@
                         seamlessly perform their duties until the key is returned.</p>
                 </div>
             </div>
-
             <!-- USER 1 VIEWS -->
             <div id="user1-entry" class="view-section hidden">
                 <div class="content-container">
@@ -643,7 +651,6 @@
                             </form>
                         </div>
                     </div>
-
                     <div class="card glass-panel mt-4">
                         <h3>Cash Denominations</h3>
                         <form id="form-cash-entry">
@@ -686,7 +693,6 @@
                             </div>
                         </form>
                     </div>
-
                     <div class="card glass-panel mt-4">
                         <h3>My Today's Entries (Pending)</h3>
                         <div class="table-responsive">
@@ -730,7 +736,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- USER 2 VIEWS -->
             <div id="user2-verify" class="view-section hidden">
                 <div class="content-container">
@@ -851,7 +856,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- KEY TRANSFER VIEW -->
             <div id="branch-key-transfer" class="view-section hidden">
                 <header>
@@ -868,10 +872,12 @@
                         <div id="key-transfer-blocked" class="card glass-panel hidden"
                             style="border-left: 4px solid #ef4444; background: rgba(239, 68, 68, 0.05); margin-top: 0; margin-bottom: 0;">
                             <h3 class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> Action Blocked</h3>
-                            <p>You must complete and sign today's End of Day declaration before you can transfer a key.</p>
+                            <p>You must complete and sign today's End of Day declaration before you can transfer a key.
+                            </p>
                         </div>
 
-                        <div id="key-transfer-form-container" class="card glass-panel hidden" style="margin-top: 0; margin-bottom: 0;">
+                        <div id="key-transfer-form-container" class="card glass-panel hidden"
+                            style="margin-top: 0; margin-bottom: 0;">
                             <h3><i class="fa-solid fa-paper-plane text-primary"></i> Initiate Transfer</h3>
                             <form id="form-key-transfer">
                                 <div class="input-group">
@@ -895,9 +901,11 @@
                                 <div class="input-group">
                                     <label>Transfer Type</label>
                                     <select id="key-transfer-type" required>
-                                        <option value="permanent">Permanent</option>
-                                        <option value="temporary">Temporary</option>
+                                      <!-- <option value="permanent">Permanent</option>--> 
+                                       <option value="" disabled selected>select transfer type</option>
+                                       <option value="temporary">Temporary</option>
                                         <option value="resignation">Resignation (Return to Admin)</option>
+                                        
                                     </select>
                                 </div>
                                 <div class="two-col-grid hidden" id="temp-key-dates">
@@ -963,7 +971,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- USER1 KEY HISTORY VIEW -->
             <div id="user1-key-history" class="view-section hidden">
                 <header>
@@ -993,7 +1000,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- USER2 KEY HISTORY VIEW -->
             <div id="user2-key-history" class="view-section hidden">
                 <header>
@@ -1023,7 +1029,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- RESERVE KEY HISTORY VIEW -->
             <div id="reserve-key-history" class="view-section hidden">
                 <header>
@@ -1053,7 +1058,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- ACCEPT KEY MODAL -->
             <div id="modal-accept-key" class="loader-overlay hidden"
                 style="background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;">
@@ -1088,8 +1092,6 @@
                     </div>
                 </div>
             </div>
-
-
             <!-- ADMIN REPORTS VIEW -->
             <div id="admin-reports" class="view-section hidden">
                 <div class="content-container">
@@ -1099,48 +1101,43 @@
                             <p style="font-size: 15px;" class="text-muted">Historical daily declarations across all
                                 branches.</p>
                         </div>
-                        
+
                     </header>
                     <div class="card glass-panel mb-4">
-                        <h4>Filter Reports</h4>
+                       
                         <form id="form-admin-filter-reports" class="mt-2"
-                            style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
-                            <div class="input-group" style="margin-bottom: 0; min-width: 150px; flex: 1;">
-                                <label>Company</label>
+                            style="display: flex; gap:8px; flex-wrap: wrap; align-items: center;">
+                            <div class="input-group">
+                                <label for="admin-filter-company">Company</label>
                                 <select id="admin-filter-company">
                                     <option value="all">All Companies</option>
                                     <option value="ART LEASING">ART LEASING</option>
                                     <option value="CHEGANNUR NIDHI">CHEGANNUR NIDHI</option>
                                 </select>
                             </div>
-                            <div class="input-group" style="margin-bottom: 0; min-width: 150px; flex: 1;">
-                                <label>Branch</label>
+                            <div class="input-group">
+                                <label for="admin-filter-branch">Branch</label>
                                 <select id="admin-filter-branch">
                                     <option value="all">All Branches</option>
                                 </select>
-                            </div>
-                            <div style="display: flex; gap: 10px; flex: 2; min-width: 250px;">
-                                <div class="input-group" style="margin-bottom: 0; flex:1">
-                                    <label>From Date</label>
+                            </div>                          
+                                <div class="input-group">
+                                    <label for="admin-filter-from">From Date</label>
                                     <input type="date" id="admin-filter-from">
                                 </div>
-                                <div class="input-group" style="margin-bottom: 0; flex:1">
-                                    <label>To Date</label>
+                                <div class="input-group">
+                                    <label for="admin-filter-to">To Date</label>
                                     <input type="date" id="admin-filter-to">
-                                </div>
-                            </div>
-                            <div class="form-actions"
-                                style="margin-bottom: 0; display: flex; gap: 10px; align-items: flex-end;">
-                                <button type="submit" class="btn btn-primary"
-                                    style="height: 42px; display: flex; align-items: center;"><i
-                                        class="fa-solid fa-check"></i> Apply Filters</button>
+                                </div>                            
+                            <div class="form-actions" style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
+                                <button type="submit" class="btn btn-primary"style="height: 38px; display: flex; align-items: center;"><i
+                                        class="fa-solid fa-check"></i> Apply</button>
                                 <button type="button" id="btn-admin-filter-clear" class="btn btn-secondary"
-                                    style="height: 42px; display: flex; align-items: center;">Clear</button>
+                                    style="height: 38px; display: flex; align-items: center;">Clear</button>
                             </div>
-                        </form>
-                    </div>
-
-                    <div class="card glass-panel report-shell">
+                            
+                
+                        </form> 
                         <div class="report-print-header">
                             <div>
                                 <p class="report-kicker">Gold Vault</p>
@@ -1152,21 +1149,21 @@
                                 <strong class="report-generated">-</strong>
                             </div>
                         </div>
-                        <div class="table-responsive">
+                        <div class="table-responsive" style="margin-top: 20px;">
                             <table id="table-admin-reports" class="admin-report">
                                 <thead>
-                                    <tr>
+                                    <tr style="background: #ffff; color: rgb(0, 0, 0); position: sticky; top: 0; z-index: 1; backdrop-filter: blur(4px);">
                                         <th>Date</th>
                                         <th>Branch</th>
                                         <th>Maker</th>
                                         <th>Checker</th>
                                         <th>Stock IN</th>
                                         <th>Stock OUT</th>
-                                        <th>Cash Total</th>
+                                        <th>Cash</th>
                                         <th>Appraised</th>
                                         <th>Not Appraised</th>
                                         <th>Total Stock</th>
-                                        <th>Outstanding Loan</th>
+                                        <th>Outstanding</th>
                                         <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
@@ -1177,7 +1174,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- ADMIN KEY REPORTS VIEW -->
             <div id="admin-key-reports" class="view-section hidden">
                 <div class="content-container">
@@ -1258,7 +1254,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- ADMIN TRANSFER HISTORY VIEW -->
             <div id="admin-transfer-history" class="view-section hidden">
                 <div class="content-container">
@@ -1268,7 +1263,7 @@
                             <p style="font-size: 15px;" class="text-muted">History of all key transfers across branches.
                             </p>
                         </div>
-                        
+
                     </header>
                     <div class="card glass-panel report-shell">
                         <form id="form-admin-filter-transfer-history" class="grid-form mb-4"
@@ -1317,7 +1312,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- ADMIN KEY HOLDINGS VIEW -->
             <div id="admin-key-holdings" class="view-section hidden">
                 <div class="content-container">
@@ -1375,7 +1369,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- ADMIN RETURNED KEYS VIEW -->
             <div id="admin-returned-keys" class="view-section hidden">
                 <div class="content-container">
@@ -1406,7 +1399,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- USER 1 REPORTS VIEW -->
             <div id="user1-reports" class="view-section hidden">
                 <header>
@@ -1414,14 +1406,7 @@
                         <h3>Branch Reports</h3>
                         <p style="font-size: 15px;" class="text-muted">Historical daily declarations for your branch.
                         </p>
-                    </div>
-                    <div class="report-header-actions">
-                        <button class="btn btn-secondary"
-                            onclick="window.downloadReportExcel('user1-reports', 'branch-reports')"><i
-                                class="fa-solid fa-file-excel"></i> Download Excel</button>
-                        <button class="btn btn-secondary" onclick="window.printReport('user1-reports')"><i
-                                class="fa-solid fa-print"></i> Print Report</button>
-                    </div>
+                    </div>                    
                 </header>
                 <div class="card glass-panel report-shell">
                     <div class="report-print-header">
@@ -1459,7 +1444,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- USER 2 REPORTS VIEW -->
             <div id="user2-reports" class="view-section hidden">
                 <header>
@@ -1467,14 +1451,7 @@
                         <h3>Branch Reports</h3>
                         <p style="font-size: 15px;" class="text-muted">Historical daily declarations for your branch.
                         </p>
-                    </div>
-                    <div class="report-header-actions">
-                        <button class="btn btn-secondary"
-                            onclick="window.downloadReportExcel('user2-reports', 'branch-reports')"><i
-                                class="fa-solid fa-file-excel"></i> Download Excel</button>
-                        <button class="btn btn-secondary" onclick="window.printReport('user2-reports')"><i
-                                class="fa-solid fa-print"></i> Print Report</button>
-                    </div>
+                    </div>                    
                 </header>
                 <div class="card glass-panel report-shell">
                     <div class="report-print-header">
@@ -1512,7 +1489,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- EDIT USER MODAL (popup) -->
             <div id="modal-edit-user" class="loader-overlay hidden"
                 style="background: rgba(0, 0, 0, 0.884); display: flex; align-items: center; justify-content: center; z-index: 10000;">
@@ -1527,11 +1503,11 @@
                         <div class="input-group">
                             <label>Role</label>
                             <select id="edit-user-role" required>
+                                <option value="admin">Administrator</option>
+                                <option value="hr">HR (Human Resources)</option>
+                                <option value="user">Reserve User (No default duties)</option>
                                 <option value="user1">User 1 (Entry / Maker)</option>
                                 <option value="user2">User 2 (Verifier / Checker)</option>
-                                <option value="user">Reserve User (No default duties)</option>
-                                <option value="hr">HR (Human Resources)</option>
-                                <option value="admin">Administrator</option>
                             </select>
                         </div>
                         <div class="input-group">
@@ -1564,7 +1540,8 @@
                             <label>Change Password</label>
                             <input type="password" id="edit-user-password" placeholder="Leave blank to keep unchanged">
                         </div>
-                        <div class="form-actions mt-3" style="grid-column: span 2; justify-content: flex-end; gap: 10px;">
+                        <div class="form-actions mt-3"
+                            style="grid-column: span 2; justify-content: flex-end; gap: 10px;">
                             <button type="button" class="btn btn-secondary"
                                 onclick="document.getElementById('modal-edit-user').classList.add('hidden')">Cancel</button>
                             <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -1572,8 +1549,6 @@
                     </form>
                 </div>
             </div>
-
-
             <!-- ADMIN SYSTEM LOGS VIEW -->
             <div id="admin-audit-trail" class="view-section hidden">
                 <div class="content-container">
@@ -1597,11 +1572,11 @@
                                     <label>Action Type</label>
                                     <select id="audit-filter-action">
                                         <option value="all">All Actions</option>
-                                        <option value="login">Logins</option>
-                                        <option value="logout">Logouts</option>
+                                        <option value="admin">Admin Changes</option>
                                         <option value="declaration">Declarations</option>
                                         <option value="deletion">Deletions</option>
-                                        <option value="admin">Admin Changes</option>
+                                        <option value="login">Logins</option>
+                                        <option value="logout">Logouts</option>
                                         <option value="security">Security Events</option>
                                     </select>
                                 </div>
@@ -1633,7 +1608,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- USER PROFILE VIEW (Shared across branch users) -->
             <div id="user-profile" class="view-section hidden">
                 <div class="content-container">
@@ -1686,7 +1660,6 @@
                     </div>
                 </div>
             </div>
-
         </main>
     </div>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -1709,4 +1682,5 @@
   });
 </script>
 </body>
+
 </html>

@@ -1,3 +1,14 @@
+// Global variable to store all users for search filtering
+window.allUsersData = [];
+
+const adminFilterCompany = document.getElementById('admin-filter-company');
+if (adminFilterCompany && !adminFilterCompany.dataset.listenerAdded) {
+    adminFilterCompany.addEventListener('change', (e) => {
+        updateAdminFilterBranches(e.target.value);
+    });
+    adminFilterCompany.dataset.listenerAdded = "true";
+}
+
 document.addEventListener('initAdmin', async () => {
     loadBranches();
     loadUsers();
@@ -51,6 +62,15 @@ document.addEventListener('initAdmin', async () => {
         }
     });
 
+    // Admin Branches Company Filter
+    const branchFilterCompany = document.getElementById('branch-filter-company');
+    if (branchFilterCompany && !branchFilterCompany.dataset.listenerAdded) {
+        branchFilterCompany.addEventListener('change', () => {
+            loadBranches();
+        });
+        branchFilterCompany.dataset.listenerAdded = "true";
+    }
+
     // Admin Reports Filter
     const reportFilterForm = document.getElementById('form-admin-filter-reports');
     if (reportFilterForm) {
@@ -100,6 +120,16 @@ document.addEventListener('initAdmin', async () => {
             loadAdminKeyReports({ branchId, fromDate, toDate });
         });
     }
+
+    // User Search Filter
+    const userSearchInput = document.getElementById('user-branch-filter-search');
+    if (userSearchInput && !userSearchInput.dataset.listenerAdded) {
+        userSearchInput.addEventListener('input', (e) => {
+            const searchText = e.target.value.toLowerCase().trim();
+            filterUsers(searchText);
+        });
+        userSearchInput.dataset.listenerAdded = "true";
+    }
 });
 
 document.getElementById('form-add-branch').addEventListener('submit', async (e) => {
@@ -142,6 +172,8 @@ async function loadBranches() {
         const newUserBranch = document.getElementById('new-user-branch');
         const editUserBranch = document.getElementById('edit-user-branch');
 
+        const companyFilter = document.getElementById('branch-filter-company')?.value || 'all';
+
         tbody.innerHTML = '';
         newUserBranch.innerHTML = '<option value="">Select Branch...</option>';
         if (editUserBranch) editUserBranch.innerHTML = '<option value="">Select Branch...</option>';
@@ -159,30 +191,24 @@ async function loadBranches() {
             }
         });
 
+        const branches = [];
         branchSnapshot.forEach(docSnap => {
+            branches.push(docSnap);
+        });
+
+        // Sort branches A to Z by name
+        branches.sort((a, b) => {
+            const nameA = (a.data().name || '').trim().toLowerCase();
+            const nameB = (b.data().name || '').trim().toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+
+        branches.forEach(docSnap => {
             const data = docSnap.data();
             const date = data.created_at ? data.created_at.toDate().toLocaleDateString('en-GB') : 'N/A';
             window.branchDataCache[docSnap.id] = data;
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><strong>${data.name}</strong></td>
-                <td>${data.company || '-'}</td>
-                <td>${data.locker_number || '-'}</td>
-                <td>${data.key1 || '-'}</td>
-                <td>${data.key2 || '-'}</td>
-                <td>${data.total_stock} items</td>
-                <td>₹${data.physical_cash.toLocaleString()}</td>
-                <td>₹${(data.outstanding_loan || 0).toLocaleString()}</td>
-                <td>${date}</td>
-                <td>
-                    <button class="btn btn-secondary btn-sm" onclick="openEditBranch('${docSnap.id}', '${escapeHtml(data.name)}', '${escapeHtml(data.company || '')}', ${data.total_stock}, ${data.physical_cash}, ${data.outstanding_loan || 0}, '${escapeHtml(data.locker_number || '')}', '${escapeHtml(data.key1 || '')}', '${escapeHtml(data.key2 || '')}')" title="Edit Branch">
-                        <i class="fa-solid fa-pen-to-square"></i> Edit
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-
+            // Populate option dropdowns for users first (so all branches are available for assignments)
             const option = document.createElement('option');
             option.value = docSnap.id;
             option.textContent = data.name;
@@ -200,6 +226,30 @@ async function loadBranches() {
                 editOption.dataset.key2 = data.key2 || '';
                 editUserBranch.appendChild(editOption);
             }
+
+            // Apply company filter to table list only
+            if (companyFilter !== 'all' && data.company !== companyFilter) {
+                return;
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${data.name}</strong></td>
+                <td>${data.company || '-'}</td>
+                <td>${data.locker_number || '-'}</td>
+                <td>${data.key1 || '-'}</td>
+                <td>${data.key2 || '-'}</td>
+                <td>${data.total_stock} items</td>
+                <td>₹${data.physical_cash.toLocaleString()}</td>
+                <td>₹${(data.outstanding_loan || 0).toLocaleString()}</td>
+                <td>${date}</td>
+                <td>
+                    <button class="btn btn-secondary btn-sm" onclick="openEditBranch('${docSnap.id}', '${escapeHtml(data.name)}', '${escapeHtml(data.company || '')}', ${data.total_stock}, ${data.physical_cash}, ${data.outstanding_loan || 0}, '${escapeHtml(data.locker_number || '')}', '${escapeHtml(data.key1 || '')}', '${escapeHtml(data.key2 || '')}')"title="Edit branch">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
         });
     } catch (error) {
         console.error("Error loading branches:", error);
@@ -302,21 +352,20 @@ let showResignedUsers = false;
 window.toggleResignedUsers = () => {
     showResignedUsers = !showResignedUsers;
     const btn = document.getElementById('btn-toggle-users');
-    const title = document.getElementById('users-list-title');
     const activeContainer = document.getElementById('active-users-container');
     const resignedContainer = document.getElementById('resigned-users-container');
 
     if (showResignedUsers) {
         btn.classList.add('active');
         btn.innerHTML = '<i class="fa-solid fa-users"></i> <span>View Active Users</span>';
-        title.textContent = 'Resigned Staff Members';
+      
         activeContainer.classList.add('hidden');
         resignedContainer.classList.remove('hidden');
         loadResignedUsers();
     } else {
         btn.classList.remove('active');
         btn.innerHTML = '<i class="fa-solid fa-user-slash"></i> <span>View Resigned Users</span>';
-        title.textContent = 'User List';
+        
         resignedContainer.classList.add('hidden');
         activeContainer.classList.remove('hidden');
         loadUsers();
@@ -335,57 +384,104 @@ async function loadUsers() {
         const branchMap = {};
         branchSnap.forEach(b => branchMap[b.id] = b.data().name);
 
+        const users = [];
         snapshot.forEach(docSnap => {
             const data = docSnap.data();
             if (data.is_resigned) return; // Skip resigned
 
             const branchName = data.role === 'admin' ? 'Admin' : (branchMap[data.branch_id] || data.branch_id || '-');
-
-            let roleBadge = '';
-            if (data.role === 'admin') roleBadge = '<span class="status-badge status-approved">Admin</span>';
-            else if (data.role === 'hr') roleBadge = '<span class="status-badge status-approved" style="background:#f59e0b;color:#fff;">HR</span>';
-            else if (data.role === 'user1') roleBadge = '<span class="status-badge status-pending" style="color:#3b82f6; background:rgba(59, 130, 246, 0.2)">User 1</span>';
-            else if (data.role === 'user2') roleBadge = '<span class="status-badge status-pending" style="color:#8b5cf6; background:rgba(139, 92, 246, 0.2)">User 2</span>';
-            else roleBadge = '<span class="status-badge status-pending">Reserve</span>';
-
-            const statusBadge = '<span class="status-badge" style="background:#dcfce7; color:#15803d;">Active</span>';
-
-            const keys = [];
-            if (data.key1) keys.push(data.key1);
-            if (data.key2) keys.push(data.key2);
-            const keyDisplay = keys.length ? keys.join(', ') : 'None';
-
-            const tr = document.createElement('tr');
-            const safeName = escapeHtml(data.name).replace(/'/g, "\\'");
-            const safeRole = (data.role || '').replace(/'/g, "\\'");
-            const safeBranch = (data.branch_id || '').replace(/'/g, "\\'");
-            const safeKey1 = (data.key1 || '').replace(/'/g, "\\'");
-            const safeKey2 = (data.key2 || '').replace(/'/g, "\\'");
-            const safeEmail = (data.email || '').replace(/'/g, "\\'");
-
-            tr.innerHTML = `
-                <td><strong>${escapeHtml(data.name)}</strong></td>
-                <td>${escapeHtml(data.locker_number || '-')}</td>
-                <td>${escapeHtml(keyDisplay)}</td>
-                <td>${escapeHtml(data.email)}</td>
-                <td>${roleBadge}</td>
-                <td>${escapeHtml(branchName)}</td>
-                <td>${statusBadge}</td>
-                <td>
-                    <button class="btn btn-secondary btn-sm" onclick="openEditUser('${docSnap.id}', '${safeName}', '${safeRole}', '${safeBranch}', '${safeKey1}', '${safeKey2}', false, '${safeEmail}')" title="Edit User">
-                        <i class="fa-solid fa-pen-to-square"></i>
-                    </button>
-                    <button class="btn btn-warning btn-sm" onclick="resetUserPassword('${data.email}')" title="Reset Password">
-                        <i class="fa-solid fa-key"></i>
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(tr);
+            users.push({ docSnap, data, branchName });
         });
+
+        // Sort users A to Z by branch name (and by user name if branch name is the same)
+        users.sort((a, b) => {
+            const bNameA = a.branchName.toLowerCase();
+            const bNameB = b.branchName.toLowerCase();
+            if (bNameA !== bNameB) {
+                return bNameA.localeCompare(bNameB);
+            }
+            const uNameA = (a.data.name || '').toLowerCase();
+            const uNameB = (b.data.name || '').toLowerCase();
+            return uNameA.localeCompare(uNameB);
+        });
+
+        // Store users data for search filtering
+        window.allUsersData = users;
+        
+        // Clear search input
+        const searchInput = document.getElementById('user-branch-filter-search');
+        if (searchInput) searchInput.value = '';
+
+        // Display all users
+        displayUsers(users);
         console.log("loadUsers completed");
     } catch (error) {
         console.error("Error loading users:", error);
     }
+}
+
+function displayUsers(usersToDisplay) {
+    const tbody = document.querySelector('#table-users tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    usersToDisplay.forEach(({ docSnap, data, branchName }) => {
+        let roleBadge = '';
+        if (data.role === 'admin') roleBadge = '<span class="status-badge status-approved">Admin</span>';
+        else if (data.role === 'hr') roleBadge = '<span class="status-badge status-approved" style="background:#f59e0b;color:#fff;">HR</span>';
+        else if (data.role === 'user1') roleBadge = '<span class="status-badge status-pending" style="color:#3b82f6; background:rgba(59, 130, 246, 0.2)">User 1</span>';
+        else if (data.role === 'user2') roleBadge = '<span class="status-badge status-pending" style="color:#8b5cf6; background:rgba(139, 92, 246, 0.2)">User 2</span>';
+        else roleBadge = '<span class="status-badge status-pending">Reserve</span>';
+
+        const statusBadge = '<span class="status-badge" style="background:#dcfce7; color:#15803d;">Active</span>';
+
+        const keys = [];
+        if (data.key1) keys.push(data.key1);
+        if (data.key2) keys.push(data.key2);
+        const keyDisplay = keys.length ? keys.join(', ') : 'None';
+
+        const tr = document.createElement('tr');
+        const safeName = escapeHtml(data.name).replace(/'/g, "\\'");
+        const safeRole = (data.role || '').replace(/'/g, "\\'");
+        const safeBranch = (data.branch_id || '').replace(/'/g, "\\'");
+        const safeKey1 = (data.key1 || '').replace(/'/g, "\\'");
+        const safeKey2 = (data.key2 || '').replace(/'/g, "\\'");
+        const safeEmail = (data.email || '').replace(/'/g, "\\'");
+
+        tr.innerHTML = `
+            <td><strong>${escapeHtml(data.name)}</strong></td>
+            <td>${escapeHtml(data.locker_number || '-')}</td>
+            <td>${escapeHtml(keyDisplay)}</td>
+            <td>${escapeHtml(data.email)}</td>
+            <td>${roleBadge}</td>
+            <td>${escapeHtml(branchName)}</td>
+            <td>${statusBadge}</td>
+            <td>
+                <button class="btn btn-secondary btn-sm" onclick="openEditUser('${docSnap.id}', '${safeName}', '${safeRole}', '${safeBranch}', '${safeKey1}', '${safeKey2}', false, '${safeEmail}')" title="Edit User">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button class="btn btn-warning btn-sm" onclick="resetUserPassword('${data.email}')" title="Reset Password">
+                    <i class="fa-solid fa-key"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function filterUsers(searchText) {
+    if (!searchText) {
+        displayUsers(window.allUsersData);
+        return;
+    }
+
+    const filtered = window.allUsersData.filter(({ data }) => {
+        const name = (data.name || '').toLowerCase();
+        const email = (data.email || '').toLowerCase();
+        return name.includes(searchText) || email.includes(searchText);
+    });
+
+    displayUsers(filtered);
 }
 
 window.resetUserPassword = async (email) => {
@@ -1028,21 +1124,58 @@ async function loadDeclarations(selectedDate = null) {
     } catch (err) { console.error(err); }
 }
 
+async function updateAdminFilterBranches(selectedCompany = 'all') {
+    const filterBranchSelect = document.getElementById('admin-filter-branch');
+    if (!filterBranchSelect) return;
+
+    const currentSelected = filterBranchSelect.value;
+    filterBranchSelect.innerHTML = '<option value="all">All Branches</option>';
+
+    try {
+        if (!window.adminBranchesListCache) {
+            const snap = await window.db.collection("branches").get();
+            window.adminBranchesListCache = [];
+            snap.forEach(doc => {
+                window.adminBranchesListCache.push({ id: doc.id, ...doc.data() });
+            });
+        }
+
+        let filtered = window.adminBranchesListCache;
+        if (selectedCompany !== 'all') {
+            filtered = window.adminBranchesListCache.filter(b => b.company === selectedCompany);
+        }
+
+        // Sort alphabetically A to Z
+        filtered.sort((a, b) => {
+            const nameA = (a.name || '').trim().toLowerCase();
+            const nameB = (b.name || '').trim().toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+
+        filtered.forEach(branch => {
+            const opt = document.createElement('option');
+            opt.value = branch.id;
+            opt.textContent = branch.name || branch.id;
+            if (branch.id === currentSelected) {
+                opt.selected = true;
+            }
+            filterBranchSelect.appendChild(opt);
+        });
+    } catch (err) {
+        console.error("Error updating admin filter branches:", err);
+    }
+}
+
 async function loadAdminReports(filters = {}) {
     window.showLoader();
     try {
         const totalReports = await renderDeclarationTable('#table-admin-reports', null, filters);
         const summText = document.querySelector('.report-summary');
         if (summText) summText.textContent = `Total: ${totalReports} Report(s)`;
-        const filterBranchSelect = document.getElementById('admin-filter-branch');
-        if (filterBranchSelect && filterBranchSelect.options.length <= 1) {
-            const snap = await window.db.collection("branches").get();
-            snap.forEach(doc => {
-                const opt = document.createElement('option');
-                opt.value = doc.id; opt.textContent = doc.data().name || doc.id;
-                filterBranchSelect.appendChild(opt);
-            });
-        }
+        
+        const companySelect = document.getElementById('admin-filter-company');
+        const selectedCompany = companySelect ? companySelect.value : 'all';
+        await updateAdminFilterBranches(selectedCompany);
     } catch (err) { console.error(err); }
     window.hideLoader();
 }
@@ -1614,14 +1747,31 @@ async function loadResignedUsers() {
         const branchMap = {};
         branchSnap.forEach(b => branchMap[b.id] = b.data().name || b.id);
 
-        let count = 0;
+        const users = [];
         snap.forEach(docSnap => {
             const data = docSnap.data();
             if (!data.is_resigned) return;
 
-            count++;
             // Try to get branch name from map, then from the user record directly if stored, then ID
             const branchName = (data.role === 'admin' || data.role === 'hr') ? 'N/A' : (branchMap[data.branch_id] || data.branch_name || data.branch_id || '-');
+            users.push({ docSnap, data, branchName });
+        });
+
+        // Sort resigned users A to Z by branch name (and by user name if branch name is the same)
+        users.sort((a, b) => {
+            const bNameA = a.branchName.toLowerCase();
+            const bNameB = b.branchName.toLowerCase();
+            if (bNameA !== bNameB) {
+                return bNameA.localeCompare(bNameB);
+            }
+            const uNameA = (a.data.name || '').toLowerCase();
+            const uNameB = (b.data.name || '').toLowerCase();
+            return uNameA.localeCompare(uNameB);
+        });
+
+        let count = 0;
+        users.forEach(({ docSnap, data, branchName }) => {
+            count++;
             const resignedDt = data.resigned_at ? data.resigned_at.toDate().toLocaleString('en-GB') : 'N/A';
 
             const tr = document.createElement('tr');
@@ -1631,7 +1781,6 @@ async function loadResignedUsers() {
             const safeBranch = (data.branch_id || '').replace(/'/g, "\\'");
             const safeKey1 = (data.key1 || '').replace(/'/g, "\\'");
             const safeKey2 = (data.key2 || '').replace(/'/g, "\\'");
-
             const safeEmail = (data.email || '').replace(/'/g, "\\'");
 
             tr.innerHTML = `

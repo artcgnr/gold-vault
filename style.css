@@ -177,19 +177,18 @@ h3 {
 
 input,
 select {
+    height: 38px;
     width: 100%;
-    padding: .5rem .5rem;
     background: rgba(255, 255, 255, 0.884);
     border: 1px solid var(--glass-border);
     border-radius: 8px;
     color: #000;
-    font-size: .9rem;
     outline: none;
     transition: border-color 0.3s;
 }
 
 select {
-    text-transform: capitalize;
+    text-transform: uppercase;
 }
 
 input:focus,
@@ -490,7 +489,7 @@ header h2 {
 .table-responsive {
     overflow-x: auto;
     overflow-y: auto;
-    max-height: 300px;
+    max-height:382px;
     /* Enables scrolling for tables that exceed container dimensions */
 }
 
@@ -506,14 +505,13 @@ table {
 
 th,
 td {
-    padding: .5rem;
+    padding: 0.4rem;
     font-size: .85rem;
-    text-align: left;
+    text-align: center;
     border-bottom: 1px solid var(--glass-border);
 }
 
 th {
-    color: var(--text-muted);
     font-weight: 400;
     font-size: 0.85rem;
 }
@@ -525,8 +523,12 @@ tbody tr:hover {
 .table-responsive table.admin-report td {
     font-size: 12px;
     font-weight: 400;
-    text-align: left;
+    text-align: center;
+    vertical-align: middle;
     text-transform: uppercase;
+}
+.fa-solid{
+    font-size: 1rem;
 }
 
 .status-badge {
@@ -926,7 +928,7 @@ tbody tr:hover {
     }
 
     header {
-        margin-bottom: 1rem;
+        margin-bottom: .4rem;
     }
 
     .stats-grid {
@@ -939,7 +941,7 @@ tbody tr:hover {
     }
 
     .card {
-        padding: 1.25rem;
+        padding: 1rem;
         margin-bottom: 1rem;
     }
 
@@ -975,11 +977,12 @@ tbody tr:hover {
 
 @media screen and (max-height: 800px) {
     .content-area {
-        padding: 1rem 1.5rem;
+        padding: 1rem 1rem;
     }
 
     .card {
-        margin-bottom: .5rem;
+        margin-bottom: .2rem;
+        margin-top: .5rem;
     }
 
     .nav-links {
@@ -991,10 +994,8 @@ tbody tr:hover {
         padding: 1rem 1.25rem;
     }
 
-
-
     .btn {
-        padding: 0.6rem 1.2rem;
+        padding: 0.4rem 1.0rem;
     }
 
     input,

@@ -755,7 +755,7 @@ window.printSingleDeclaration = async (branchId, dateStr) => {
                             <div class="box-title">Checker (User 2) Verification</div>
                             <div class="verification-details">
                                <p><strong>Verified By:</strong> ${escapeHtml(declData.user2_name || "Checker")}</p>
-                               <p><strong>Assigned Key:</strong> ${escapeHtml(checkerKeys.key2)}</p>
+                               <p><strong>Assigned Key:</strong> ${escapeHtml(checkerKeys.key1)}</p>
                                <p><strong>Signed At:</strong> ${u2Time || 'N/A'}</p>
                             </div>
                             <div class="signature-line">
