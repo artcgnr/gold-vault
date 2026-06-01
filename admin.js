@@ -899,6 +899,13 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {})
         return 0;
     }
 
+    // Sort by branch name A to Z
+    parsedDocs.sort((a, b) => {
+        const branchNameA = (branchMap[a.branch_id]?.name || 'Unknown').toLowerCase();
+        const branchNameB = (branchMap[b.branch_id]?.name || 'Unknown').toLowerCase();
+        return branchNameA.localeCompare(branchNameB);
+    });
+
     const rows = await Promise.all(parsedDocs.map(async data => {
         const branchDataObj = branchMap[data.branch_id] || {};
         const branchName = branchDataObj.name || "Unknown";
