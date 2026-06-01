@@ -24,7 +24,7 @@
     <section id="login-section">
         <div class="login-card glass-panel">
             <div class="logo">
-                <i class="fa-solid fa-vault" style="font-size: 2.5rem; color: var(--primary);"></i>
+                <i class="fa-solid fa-vault"></i>
                 <h>Gold Vault</h1>
             </div>
             <p class="subtitle">Locker Management System</p>
@@ -119,8 +119,10 @@
                             <option value="" disabled selected>Select Role</option>
                             <option value="admin">Administrator</option>
                             <option value="hr">HR (Human Resources)</option>
+                            <option value="ho">HO (Head Office)</option>
                             <option value="user">Reserve User (No default duties)</option>
                             <option value="user1">User 1 (Entry / Maker)</option>
+                            <option value="user1and1">Maker (1 and 1 - No Checker)</option>
                             <option value="user2">User 2 (Verifier / Checker)</option>
                         </select>
                     </div>
@@ -220,6 +222,7 @@
                     Reports</a>
                 <a href="#" class="nav-item" data-target="admin-key-reports"><i class="fa-solid fa-bolt"></i> Emergency
                     Key Transfer</a>
+                <a href="#" class="nav-item" data-target="admin-permanent-key-transfer"><i class="fa-solid fa-key"></i> Permanent Key Transfer</a>
                 <a href="#" class="nav-item" data-target="admin-transfer-history"><i
                         class="fa-solid fa-clock-rotate-left"></i> Transfer History</a>
                 <a href="#" class="nav-item" data-target="admin-key-holdings"><i
@@ -327,7 +330,6 @@
                                             <th>Total Stock</th>
                                             <th>Outstanding Loan</th>
                                             <th>Status</th>
-                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
@@ -406,9 +408,11 @@
                                         <th>Locker #</th>
                                         <th>Key 1</th>
                                         <th>Key 2</th>
+                                        <!--
                                         <th>Total Stock</th>
                                         <th>Cash (₹)</th>
                                         <th>Outstanding(₹)</th>
+                                    -->
                                         <th>Added On</th>
                                         <th>Actions</th>
                                     </tr>
@@ -1101,7 +1105,12 @@
                             <p style="font-size: 15px;" class="text-muted">Historical daily declarations across all
                                 branches.</p>
                         </div>
-
+                        <div class="report-header-actions">
+                            <button class="btn btn-secondary"
+                                onclick="window.downloadReportExcel('admin-reports', 'system-reports')">
+                                <i class="fa-solid fa-file-excel"></i> Export Excel
+                            </button>
+                        </div>
                     </header>
                     <div class="card glass-panel mb-4">
                        
@@ -1222,15 +1231,12 @@
                                         <option value="" disabled selected>Select user first...</option>
                                     </select>
                                 </div>
-                                <div class="input-group">
+                                <div class="input-group hidden">
                                     <label>Transfer Type</label>
-                                    <select id="admin-kt-type" required>
-                                        <option value="permanent">Permanent</option>
-                                        <option value="temporary">Temporary</option>
-                                    </select>
+                                    <input type="hidden" id="admin-kt-type" value="temporary">
                                 </div>
                             </div>
-                            <div class="two-col-grid hidden" id="admin-kt-dates">
+                            <div class="two-col-grid" id="admin-kt-dates">
                                 <div class="input-group">
                                     <label>From Date</label>
                                     <input type="date" id="admin-kt-from">
@@ -1254,6 +1260,71 @@
                     </div>
                 </div>
             </div>
+            <!-- ADMIN PERMANENT KEY TRANSFER VIEW -->
+            <div id="admin-permanent-key-transfer" class="view-section hidden">
+                <div class="content-container">
+                    <header>
+                        <div>
+                            <h3>Permanent Key Transfer</h3>
+                            <p style="font-size: 15px;" class="text-muted">Initiate permanent key transfers between any branches.</p>
+                        </div>
+                    </header>
+
+                    <div class="card glass-panel mb-4">
+                        <h3><i class="fa-solid fa-key text-primary"></i> Admin Permanent Key Transfer</h3>
+                        <form id="form-admin-permanent-transfer" class="grid-form mt-2">
+                            <div class="two-col-grid">
+                                <div class="input-group">
+                                    <label>Sender Branch</label>
+                                    <select id="admin-pkt-sender-branch" required>
+                                        <option value="" disabled selected>Loading...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label>Sender User</label>
+                                    <select id="admin-pkt-sender-user" required disabled>
+                                        <option value="" disabled selected>Select Branch First...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label>Receiver Branch</label>
+                                    <select id="admin-pkt-receiver-branch" required>
+                                        <option value="" disabled selected>Loading...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label>Receiver User</label>
+                                    <select id="admin-pkt-receiver-user" required disabled>
+                                        <option value="" disabled selected>Select Branch First...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="two-col-grid">
+                                <div class="input-group">
+                                    <label>Select Key to Transfer</label>
+                                    <select id="admin-pkt-number" required>
+                                        <option value="" disabled selected>Select user first...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group hidden">
+                                    <label>Transfer Type</label>
+                                    <input type="hidden" id="admin-pkt-type" value="permanent">
+                                </div>
+                            </div>
+                            <div class="input-group full-width">
+                                <label>Reason for Transfer</label>
+                                <input type="text" id="admin-pkt-reason" required
+                                    placeholder="e.g. Permanent reassignment">
+                            </div>
+                            <div class="form-actions full-width mt-2">
+                                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-key"></i> Send
+                                    Permanent
+                                    Transfer</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
             <!-- ADMIN TRANSFER HISTORY VIEW -->
             <div id="admin-transfer-history" class="view-section hidden">
                 <div class="content-container">
@@ -1267,27 +1338,35 @@
                     </header>
                     <div class="card glass-panel report-shell">
                         <form id="form-admin-filter-transfer-history" class="grid-form mb-4"
-                            style="display: flex; flex-direction: row; align-items: center;">
+                            style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; background: rgba(255, 255, 255, 0.5); padding: 15px; border-radius: 8px;">
 
-                            <div class="input-group">
-                                <label>Branch Filter</label>
-                                <select id="admin-filter-transfer-branch" style="width: 20vw;">
+                            <div class="input-group" style="flex: 1.5; min-width: 200px; margin-bottom: 0;">
+                                <label style="margin-bottom: 4px;">Branch Filter</label>
+                                <select id="admin-filter-transfer-branch" style="width: 100%;">
                                     <option value="all">All Branches</option>
                                 </select>
                             </div>
-                            <div class="input-group" style="display: flex; gap: 10px;">
-                                <div>
-                                    <label>From Date</label>
-                                    <input type="date" id="admin-filter-transfer-from">
-                                </div>
-                                <div>
-                                    <label>To Date</label>
-                                    <input type="date" id="admin-filter-transfer-to">
-                                </div>
-                                <div class="form-actions mt-2" style="margin-top: 26px;">
-                                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i>
-                                        Generate Report</button>
-                                </div>
+                            <div class="input-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                                <label style="margin-bottom: 4px;">Status</label>
+                                <select id="admin-filter-transfer-status" style="width: 100%;">
+                                    <option value="all">All Statuses</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="accepted">Accepted</option>
+                                    <option value="returned">Returned</option>
+                                </select>
+                            </div>
+                            <div class="input-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                                <label style="margin-bottom: 4px;">From Date</label>
+                                <input type="date" id="admin-filter-transfer-from" style="width: 100%;">
+                            </div>
+                            <div class="input-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                                <label style="margin-bottom: 4px;">To Date</label>
+                                <input type="date" id="admin-filter-transfer-to" style="width: 100%;">
+                            </div>
+                            <div class="form-actions" style="margin-bottom: 0; padding-bottom: 2px;">
+                                <button type="submit" class="btn btn-primary" style="white-space: nowrap; height: 38px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                    <i class="fa-solid fa-filter"></i> Filter
+                                </button>
                             </div>
                         </form>
                         <div class="table-responsive">
@@ -1501,12 +1580,18 @@
                             <input type="text" id="edit-user-name" required>
                         </div>
                         <div class="input-group">
+                            <label>Email Address</label>
+                            <input type="email" id="edit-user-email" required>
+                        </div>
+                        <div class="input-group">
                             <label>Role</label>
                             <select id="edit-user-role" required>
                                 <option value="admin">Administrator</option>
                                 <option value="hr">HR (Human Resources)</option>
+                                <option value="ho">HO (Head Office)</option>
                                 <option value="user">Reserve User (No default duties)</option>
                                 <option value="user1">User 1 (Entry / Maker)</option>
+                                <option value="user1and1">Maker (1 and 1 - No Checker)</option>
                                 <option value="user2">User 2 (Verifier / Checker)</option>
                             </select>
                         </div>

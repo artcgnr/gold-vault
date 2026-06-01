@@ -6,7 +6,6 @@ const firebaseConfig = {
     messagingSenderId: "812684053866",
     appId: "1:812684053866:web:be21dc3859b3593d946913"
 };
-
 window.firebaseConfig = firebaseConfig;
 
 const isConfigured = true;
@@ -210,7 +209,7 @@ if (isConfigured) {
                         return;
                     }
 
-                    if (window.currentUserData.role !== 'admin' && window.currentUserData.role !== 'hr') {
+                    if (window.currentUserData.role !== 'admin' && window.currentUserData.role !== 'hr' && window.currentUserData.role !== 'ho') {
                         const contexts = [];
 
                         // 1. Check if user SENT a key TEMPORARILY (Access Suspended)
@@ -394,18 +393,24 @@ function setupDashboard(userData) {
         if (switcher) switcher.classList.add('hidden');
     }
 
-    const activeRoles = userData.active_roles || [userData.role];
+    let activeRoles = userData.active_roles || [userData.role];
+    if (activeRoles.includes('user') && (activeRoles.includes('user1') || activeRoles.includes('user2') || activeRoles.includes('user1and1'))) {
+        activeRoles = activeRoles.filter(r => r !== 'user');
+    }
 
     let roleDisplay = "Reserve User";
-    if (activeRoles.includes('admin') || activeRoles.includes('hr')) {
-        roleDisplay = activeRoles.includes('admin') ? "Administrator" : "HR (Human Resources)";
+    const isActingReserve = userData.role === 'user' && (activeRoles.includes('user1') || activeRoles.includes('user2') || activeRoles.includes('user1and1'));
+    if (activeRoles.includes('admin') || activeRoles.includes('hr') || activeRoles.includes('ho')) {
+        if (activeRoles.includes('admin')) roleDisplay = "Administrator";
+        else if (activeRoles.includes('hr')) roleDisplay = "HR (Human Resources)";
+        else roleDisplay = "HO (Head Office)";
     } else {
         const parts = [];
-        if (activeRoles.includes('user1')) parts.push("Entry (Maker)");
+        if (activeRoles.includes('user1') || activeRoles.includes('user1and1')) parts.push("Entry (Maker)");
         if (activeRoles.includes('user2')) parts.push("Verifier (Checker)");
         if (parts.length > 0) {
             roleDisplay = parts.join(" & ");
-            if (userData.received_role && userData.role === 'user') {
+            if (isActingReserve) {
                 roleDisplay += " (Acting)";
             }
         }
@@ -413,14 +418,26 @@ function setupDashboard(userData) {
 
     document.getElementById('user-display-role').textContent = roleDisplay;
 
-    if (activeRoles.includes('admin') || activeRoles.includes('hr')) {
-        document.getElementById('nav-admin').classList.remove('hidden');
-        switchView('admin-overview');
+    if (activeRoles.includes('admin') || activeRoles.includes('hr') || activeRoles.includes('ho')) {
+        const navAdmin = document.getElementById('nav-admin');
+        navAdmin.classList.remove('hidden');
+        const allItems = navAdmin.querySelectorAll('.nav-item');
+        if (activeRoles.includes('ho') && !activeRoles.includes('admin')) {
+            const allowedForHo = ['admin-reports', 'admin-backdate-approval', 'admin-key-holdings'];
+            allItems.forEach(item => {
+                if (allowedForHo.includes(item.dataset.target)) item.style.display = 'block';
+                else item.style.display = 'none';
+            });
+            switchView('admin-reports');
+        } else {
+            allItems.forEach(item => { item.style.display = 'block'; });
+            switchView('admin-overview');
+        }
         document.dispatchEvent(new Event('initAdmin'));
     } else {
         let defaultView = 'reserve-overview';
 
-        if (activeRoles.includes('user1')) {
+        if (activeRoles.includes('user1') || activeRoles.includes('user1and1')) {
             document.getElementById('nav-user1').classList.remove('hidden');
             document.dispatchEvent(new Event('initUser1'));
             defaultView = 'user1-entry';
@@ -429,12 +446,13 @@ function setupDashboard(userData) {
         if (activeRoles.includes('user2')) {
             document.getElementById('nav-user2').classList.remove('hidden');
             document.dispatchEvent(new Event('initUser2'));
-            if (!activeRoles.includes('user1')) {
+            if (!activeRoles.includes('user1') && !activeRoles.includes('user1and1')) {
                 defaultView = 'user2-verify';
             }
         }
 
-        if (activeRoles.includes('user')) {
+        // Only show Reserve nav if the user has no active transferred roles
+        if (activeRoles.includes('user') && !activeRoles.includes('user1') && !activeRoles.includes('user2') && !activeRoles.includes('user1and1')) {
             document.getElementById('nav-reserve').classList.remove('hidden');
             const reserveHeader = document.querySelector('#reserve-overview h2');
             const reserveMsg = document.querySelector('#reserve-overview header p');
@@ -447,7 +465,7 @@ function setupDashboard(userData) {
             }
         }
 
-        if (activeRoles.includes('user1') || activeRoles.includes('user2')) {
+        if (activeRoles.includes('user1') || activeRoles.includes('user2') || activeRoles.includes('user1and1')) {
             document.dispatchEvent(new Event('initKeyTransfer'));
         }
 
@@ -504,6 +522,90 @@ window.printSingleDeclaration = async (branchId, dateStr) => {
                 signerDataById[signerIds[index]] = userDoc.data();
             }
         });
+
+        const cleanKey = (key) => String(key || '').trim();
+        const normalizeKey = (key) => cleanKey(key).toUpperCase();
+        const uniqueKeys = (keys) => {
+            const seen = new Set();
+            return keys.map(cleanKey).filter(key => {
+                if (!key || key.toUpperCase() === 'N/A') return false;
+                const normalized = normalizeKey(key);
+                if (seen.has(normalized)) return false;
+                seen.add(normalized);
+                return true;
+            });
+        };
+        const getSignedKeys = (primaryKey, secondaryKey, userId, fallbackKey1, fallbackKey2) => {
+            const userData = signerDataById[userId] || {};
+            const keys = uniqueKeys([primaryKey, secondaryKey, userData.key1, userData.key2]);
+            const fallbackKeys = uniqueKeys([fallbackKey1, fallbackKey2]);
+            return {
+                key1: keys[0] || fallbackKeys[0] || "N/A",
+                key2: keys[1] || fallbackKeys[1] || "N/A",
+                list: keys
+            };
+        };
+        const makerKeys = getSignedKeys(declData.user1_key1, declData.user1_key2, declData.user1_id, branchData.key1, branchData.key2);
+        const checkerKeys = getSignedKeys(declData.user2_key1, declData.user2_key2, declData.user2_id, branchData.key1, branchData.key2);
+        const signedKeysById = {
+            [declData.user1_id]: makerKeys.list,
+            [declData.user2_id]: checkerKeys.list
+        };
+
+        // Fetch key transfer positions for each signer to determine physical key location
+        const keyPositionById = {};
+        await Promise.all(signerIds.map(async (userId) => {
+            const uData = signerDataById[userId] || {};
+            const signerName = uData.name || (userId === declData.user1_id ? declData.user1_name : declData.user2_name) || 'Holder';
+            const signedKeys = signedKeysById[userId] || [];
+            const fallbackAssignedKeys = uniqueKeys([uData.key1, uData.key2]);
+            const knownKeys = signedKeys.length > 0 ? signedKeys : fallbackAssignedKeys;
+            const positions = [];
+
+            // Check if any of user's own keys are currently lent out
+            const sentSnap = await window.db.collection('key_transfers')
+                .where('sender_id', '==', userId)
+                .where('status', '==', 'accepted')
+                .where('transfer_type', '==', 'temporary')
+                .get();
+            const lentKeys = {};
+            sentSnap.forEach(doc => {
+                const d = doc.data();
+                lentKeys[normalizeKey(d.key_number)] = d.receiver_name || 'Unknown';
+            });
+
+            // Check if user is holding a key received via temporary transfer
+            const receivedSnap = await window.db.collection('key_transfers')
+                .where('receiver_id', '==', userId)
+                .where('status', '==', 'accepted')
+                .where('transfer_type', '==', 'temporary')
+                .get();
+            const heldKeys = {};
+            receivedSnap.forEach(doc => {
+                const d = doc.data();
+                const keyNumber = cleanKey(d.key_number);
+                if (keyNumber) {
+                    heldKeys[normalizeKey(keyNumber)] = { key: keyNumber, from: d.sender_name || 'Unknown' };
+                }
+            });
+
+            knownKeys.forEach(key => {
+                const normalized = normalizeKey(key);
+                if (heldKeys[normalized]) {
+                    positions.push(`${heldKeys[normalized].key} (With ${signerName}, temp. from ${heldKeys[normalized].from})`);
+                } else if (!lentKeys[normalized]) {
+                    positions.push(`${key} (With ${signerName})`);
+                }
+            });
+
+            Object.values(heldKeys).forEach(hk => {
+                if (!knownKeys.some(key => normalizeKey(key) === normalizeKey(hk.key))) {
+                    positions.push(`${hk.key} (With ${signerName}, temp. from ${hk.from})`);
+                }
+            });
+
+            keyPositionById[userId] = positions.length > 0 ? positions.join(', ') : 'No key currently held';
+        }));
 
         // Fetch transactions for the day summary
         const [stockSnap, cashSnap, appraisalSnap] = await Promise.all([
@@ -579,15 +681,8 @@ window.printSingleDeclaration = async (branchId, dateStr) => {
         const u1Time = declData.user1_signed_at ? formatSignatureTime(declData.user1_signed_at) : (declData.timestamp ? formatSignatureTime(declData.timestamp) : '');
         const u2Time = declData.user2_signed_at ? formatSignatureTime(declData.user2_signed_at) : (declData.timestamp ? formatSignatureTime(declData.timestamp) : '');
 
-        const getSignedKeys = (primaryKey, secondaryKey, userId, fallbackKey1, fallbackKey2) => {
-            const userData = signerDataById[userId] || {};
-            return {
-                key1: userData.key1 || primaryKey || fallbackKey1 || "N/A",
-                key2: userData.key2 || secondaryKey || fallbackKey2 || "N/A"
-            };
-        };
-        const makerKeys = getSignedKeys(declData.user1_key1, declData.user1_key2, declData.user1_id, branchData.key1, branchData.key2);
-        const checkerKeys = getSignedKeys(declData.user2_key1, declData.user2_key2, declData.user2_id, branchData.key1, branchData.key2);
+        const makerKeyPosition = keyPositionById[declData.user1_id] || makerKeys.key1;
+        const checkerKeyPosition = keyPositionById[declData.user2_id] || checkerKeys.key1;
 
 
         const printContainer = document.getElementById('branch-declaration-print');
@@ -742,7 +837,7 @@ window.printSingleDeclaration = async (branchId, dateStr) => {
                             <div class="box-title">Maker (User 1) Declaration</div>
                             <div class="verification-details">
                                <p><strong>Verified By:</strong> ${escapeHtml(declData.user1_name || "Maker")}</p>
-                               <p><strong>Assigned Key </strong> ${escapeHtml(makerKeys.key1)}</p>
+                                <p><strong>Assigned Key </strong> ${escapeHtml(makerKeys.key2)}</p>
                                <p><strong>Signed At:</strong> ${u1Time || 'N/A'}</p>
                             </div>
                             <div class="signature-line">
@@ -755,7 +850,7 @@ window.printSingleDeclaration = async (branchId, dateStr) => {
                             <div class="box-title">Checker (User 2) Verification</div>
                             <div class="verification-details">
                                <p><strong>Verified By:</strong> ${escapeHtml(declData.user2_name || "Checker")}</p>
-                               <p><strong>Assigned Key:</strong> ${escapeHtml(checkerKeys.key1)}</p>
+                                <p><strong>Assigned Key </strong> ${escapeHtml(checkerKeys.key2)}</p>
                                <p><strong>Signed At:</strong> ${u2Time || 'N/A'}</p>
                             </div>
                             <div class="signature-line">
@@ -789,8 +884,8 @@ window.printSingleDeclaration = async (branchId, dateStr) => {
 
         document.body.setAttribute('data-print-section', 'branch-declaration-print');
         window.print();
-        
-        if (!declData.print_taken && window.currentUserData && window.currentUserData.role !== 'admin' && window.currentUserData.role !== 'hr') {
+
+        if (!declData.print_taken && window.currentUserData && window.currentUserData.role !== 'admin' && window.currentUserData.role !== 'hr' && window.currentUserData.role !== 'ho') {
             await window.db.collection("declarations").doc(docId).update({
                 print_taken: true,
                 print_taken_at: firebase.firestore.FieldValue.serverTimestamp(),
@@ -864,7 +959,7 @@ window.enableKeyTransferPrint = async (transferId) => {
         });
         window.showToast('Print enabled successfully.', 'success');
         if (typeof loadAdminKeyReports === 'function') loadAdminKeyReports();
-    } catch(err) {
+    } catch (err) {
         window.showToast(err.message, 'error');
     }
     window.hideLoader();
@@ -886,7 +981,7 @@ window.printKeyTransferReceipt = async (transferId, reloadAfter = false) => {
             ]);
             if (sb.exists) senderBranchName = sb.data().name || data.branch_id;
             if (rb.exists) receiverBranchName = rb.data().name || data.receiver_branch_id;
-        } catch(e) {}
+        } catch (e) { }
 
         const formatTime = (ts) => {
             if (!ts) return 'N/A';
@@ -969,8 +1064,8 @@ window.printKeyTransferReceipt = async (transferId, reloadAfter = false) => {
 
         document.body.setAttribute('data-print-section', 'key-transfer-print');
         window.print();
-        
-        if (!data.print_taken && window.currentUserData && window.currentUserData.role !== 'admin' && window.currentUserData.role !== 'hr') {
+
+        if (!data.print_taken && window.currentUserData && window.currentUserData.role !== 'admin' && window.currentUserData.role !== 'hr' && window.currentUserData.role !== 'ho') {
             await window.db.collection('key_transfers').doc(transferId).update({
                 print_taken: true,
                 print_taken_at: firebase.firestore.FieldValue.serverTimestamp(),
@@ -987,7 +1082,7 @@ window.printKeyTransferReceipt = async (transferId, reloadAfter = false) => {
                     loadKeyTransferHistory('table-key-history-user1');
                     loadKeyTransferHistory('table-key-history-user2');
                 }
-                if (typeof loadAdminKeyReports === 'function' && (window.currentUserData.role === 'admin' || window.currentUserData.role === 'hr')) {
+                if (typeof loadAdminKeyReports === 'function' && (window.currentUserData.role === 'admin' || window.currentUserData.role === 'hr' || window.currentUserData.role === 'ho')) {
                     loadAdminKeyReports();
                 }
             }

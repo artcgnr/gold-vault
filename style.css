@@ -489,12 +489,12 @@ header h2 {
 .table-responsive {
     overflow-x: auto;
     overflow-y: auto;
-    max-height:382px;
+    max-height:370px;
     /* Enables scrolling for tables that exceed container dimensions */
 }
 
 .table-responsive.user_table {
-    height: 520px;
+    height: 519px;
     /* enables scrolling for tables that exceed container dimensions */
 }
 

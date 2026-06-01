@@ -460,6 +460,8 @@ document.getElementById('btn-u1-declare').addEventListener('click', async () => 
             outstandingLoan = tData.outstanding_loan !== undefined ? tData.outstanding_loan : outstandingLoan;
         }
 
+        const is1and1 = window.currentUserData.active_roles ? window.currentUserData.active_roles.includes('user1and1') : window.currentUserData.role === 'user1and1';
+
         await window.db.collection("declarations").doc(docId).set({
             branch_id: branchId,
             user1_id: window.currentUser.uid,
@@ -468,6 +470,14 @@ document.getElementById('btn-u1-declare').addEventListener('click', async () => 
             user1_key1: key1,
             user1_key2: key2,
             user1_signed_at: window.activeBackdate ? new Date(window.activeBackdate + 'T12:00:00') : new Date(),
+            ...(is1and1 ? {
+                user2_id: "Auto-1and1",
+                user2_name: "System (1 and 1)",
+                user2_status: "Signed",
+                user2_key1: "N/A",
+                user2_key2: "N/A",
+                user2_signed_at: window.activeBackdate ? new Date(window.activeBackdate + 'T12:00:00') : new Date()
+            } : {}),
             stock_in: stockIn,
             stock_out: stockOut,
             cash_total: cashTotal,
@@ -483,6 +493,10 @@ document.getElementById('btn-u1-declare').addEventListener('click', async () => 
         await window.logAuditEvent("Declaration Signed", "declaration", `End of Day signed for ${date} with keys: ${key1}, ${key2}`);
         window.showToast("Declaration saved.", "success");
         loadUser1Entries();
+        
+        if (is1and1 && typeof window.printSingleDeclaration === 'function') {
+            window.printSingleDeclaration(branchId, date);
+        }
     } catch (e) {
         window.showToast(e.message, "error");
     }
@@ -1080,7 +1094,7 @@ async function initKeyTransferView() {
         if (decl.exists) {
             const data = decl.data();
             const rolesToCheck = window.currentUserData.active_roles || [window.currentUserData.role];
-            if (rolesToCheck.includes('user1') && data.user1_status === 'Signed') hasDeclared = true;
+            if ((rolesToCheck.includes('user1') || rolesToCheck.includes('user1and1')) && data.user1_status === 'Signed') hasDeclared = true;
             if (rolesToCheck.includes('user2') && data.user2_status === 'Signed') hasDeclared = true;
             if (rolesToCheck.includes('admin')) hasDeclared = true; // Admins bypass this block
         }

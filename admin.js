@@ -15,7 +15,7 @@ document.addEventListener('initAdmin', async () => {
     loadResignedUsers();
     loadStats();
     loadDeclarations();
-    initAdminEmergencyTransfer();
+    initAdminTransfers();
     initBackdateApproval();
     if (window.loadAuditLogs) loadAuditLogs();
 
@@ -117,7 +117,8 @@ document.addEventListener('initAdmin', async () => {
             const branchId = document.getElementById('admin-filter-transfer-branch').value;
             const fromDate = document.getElementById('admin-filter-transfer-from').value;
             const toDate = document.getElementById('admin-filter-transfer-to').value;
-            loadAdminKeyReports({ branchId, fromDate, toDate });
+            const status = document.getElementById('admin-filter-transfer-status').value;
+            loadAdminKeyReports({ branchId, fromDate, toDate, status });
         });
     }
 
@@ -239,9 +240,7 @@ async function loadBranches() {
                 <td>${data.locker_number || '-'}</td>
                 <td>${data.key1 || '-'}</td>
                 <td>${data.key2 || '-'}</td>
-                <td>${data.total_stock} items</td>
-                <td>₹${data.physical_cash.toLocaleString()}</td>
-                <td>₹${(data.outstanding_loan || 0).toLocaleString()}</td>
+                
                 <td>${date}</td>
                 <td>
                     <button class="btn btn-secondary btn-sm" onclick="openEditBranch('${docSnap.id}', '${escapeHtml(data.name)}', '${escapeHtml(data.company || '')}', ${data.total_stock}, ${data.physical_cash}, ${data.outstanding_loan || 0}, '${escapeHtml(data.locker_number || '')}', '${escapeHtml(data.key1 || '')}', '${escapeHtml(data.key2 || '')}')"title="Edit branch">
@@ -311,7 +310,7 @@ document.getElementById('form-add-user').addEventListener('submit', async (e) =>
     const lockerNumber = document.getElementById('new-user-locker').value;
     const assignedKey = document.getElementById('new-user-key').value;
 
-    if (role !== 'admin' && role !== 'hr' && !branchId) {
+    if (role !== 'admin' && role !== 'hr' && role !== 'ho' && !branchId) {
         return window.showToast("Please select a branch for non-admin/HR users.", "error");
     }
 
@@ -429,7 +428,9 @@ function displayUsers(usersToDisplay) {
         let roleBadge = '';
         if (data.role === 'admin') roleBadge = '<span class="status-badge status-approved">Admin</span>';
         else if (data.role === 'hr') roleBadge = '<span class="status-badge status-approved" style="background:#f59e0b;color:#fff;">HR</span>';
+        else if (data.role === 'ho') roleBadge = '<span class="status-badge status-approved" style="background:#14b8a6;color:#fff;">HO</span>';
         else if (data.role === 'user1') roleBadge = '<span class="status-badge status-pending" style="color:#3b82f6; background:rgba(59, 130, 246, 0.2)">User 1</span>';
+        else if (data.role === 'user1and1') roleBadge = '<span class="status-badge status-pending" style="color:#3b82f6; background:rgba(59, 130, 246, 0.2)">Maker (1&1)</span>';
         else if (data.role === 'user2') roleBadge = '<span class="status-badge status-pending" style="color:#8b5cf6; background:rgba(139, 92, 246, 0.2)">User 2</span>';
         else roleBadge = '<span class="status-badge status-pending">Reserve</span>';
 
@@ -459,10 +460,7 @@ function displayUsers(usersToDisplay) {
             <td>
                 <button class="btn btn-secondary btn-sm" onclick="openEditUser('${docSnap.id}', '${safeName}', '${safeRole}', '${safeBranch}', '${safeKey1}', '${safeKey2}', false, '${safeEmail}')" title="Edit User">
                     <i class="fa-solid fa-pen-to-square"></i>
-                </button>
-                <button class="btn btn-warning btn-sm" onclick="resetUserPassword('${data.email}')" title="Reset Password">
-                    <i class="fa-solid fa-key"></i>
-                </button>
+                </button>               
             </td>
         `;
         tbody.appendChild(tr);
@@ -511,6 +509,8 @@ window.openEditUser = (id, name, role, branchId, key1, key2, isResigned = false,
 
     document.getElementById('edit-user-id').value = id;
     document.getElementById('edit-user-name').value = name;
+    const emailInput = document.getElementById('edit-user-email');
+    if (emailInput) emailInput.value = email;
     document.getElementById('edit-user-role').value = role;
     document.getElementById('edit-user-status').value = isResigned ? 'resigned' : 'active';
     const pwdInput = document.getElementById('edit-user-password');
@@ -559,7 +559,7 @@ document.getElementById('form-edit-user').addEventListener('submit', async (e) =
     const status = document.getElementById('edit-user-status').value;
     const isResigned = (status === 'resigned');
 
-    if (role !== 'admin' && role !== 'hr' && !branchId) {
+    if (role !== 'admin' && role !== 'hr' && role !== 'ho' && !branchId) {
         return window.showToast("Please select a branch for non-admin/HR users.", "error");
     }
 
@@ -574,31 +574,42 @@ document.getElementById('form-edit-user').addEventListener('submit', async (e) =
         };
 
         const newPassword = document.getElementById('edit-user-password').value;
-        if (newPassword && newPassword.trim().length > 0) {
-            if (newPassword.trim().length < 6) {
-                window.hideLoader();
-                return window.showToast("Password must be at least 6 characters long.", "error");
-            }
-            
-            const userSnap = await window.db.collection("users").doc(id).get();
-            const userData = userSnap.data();
+        const newEmail = document.getElementById('edit-user-email') ? document.getElementById('edit-user-email').value : '';
+        const userSnap = await window.db.collection("users").doc(id).get();
+        const userData = userSnap.data();
+
+        let needsAuth = false;
+        if (newPassword && newPassword.trim().length > 0) needsAuth = true;
+        if (newEmail && newEmail.trim() !== '' && newEmail !== userData.email) needsAuth = true;
+
+        if (needsAuth) {
             let currentPassword = userData.password;
             const email = userData.email;
             
             if (!currentPassword) {
-                currentPassword = prompt(`This user was created without a saved password. Please enter the user's CURRENT password to allow changing it in the database, or click Cancel:`);
+                currentPassword = prompt(`This user was created without a saved password. Please enter the user's CURRENT password to allow changing credentials, or click Cancel:`);
                 if (!currentPassword) {
                     window.hideLoader();
                     return;
                 }
             }
             
-            const secAppName = "UpdatePassApp" + Date.now();
+            const secAppName = "UpdateCredsApp" + Date.now();
             const secondaryApp = firebase.initializeApp(window.firebaseConfig, secAppName);
             try {
                 const userCreds = await secondaryApp.auth().signInWithEmailAndPassword(email, currentPassword);
-                await userCreds.user.updatePassword(newPassword);
-                updates.password = newPassword;
+                
+                if (newPassword && newPassword.trim().length > 0) {
+                    if (newPassword.trim().length < 6) throw new Error("Password must be at least 6 characters long.");
+                    await userCreds.user.updatePassword(newPassword);
+                    updates.password = newPassword;
+                }
+                
+                if (newEmail && newEmail.trim() !== '' && newEmail !== userData.email) {
+                    await userCreds.user.updateEmail(newEmail);
+                    updates.email = newEmail;
+                }
+                
                 await secondaryApp.auth().signOut();
                 await secondaryApp.delete();
             } catch (authErr) {
@@ -919,7 +930,13 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {})
         const cKeyStr = (data.user2_key1 || data.user2_key2) ? `<br><small class="text-primary"><i class="fa-solid fa-key"></i> ${escapeHtml([data.user2_key1, data.user2_key2].filter(Boolean).join(', '))}</small>` : '';
         const makerInfo = data.user1_status === 'Signed' ? `<strong>${escapeHtml(data.user1_name || 'Signed')}</strong>${mKeyStr}` : '<span class="status-badge status-pending">Pending</span>';
         const checkerInfo = data.user2_status === 'Signed' ? `<strong>${escapeHtml(data.user2_name || 'Signed')}</strong>${cKeyStr}` : '<span class="status-badge status-pending">Pending</span>';
-        const finalStatus = data.user1_status === 'Signed' && data.user2_status === 'Signed' ? '<span class="status-badge status-approved">Complete</span>' : '<span class="status-badge status-pending">Incomplete</span>';
+        let finalStatus = data.user1_status === 'Signed' && data.user2_status === 'Signed' ? '<span class="status-badge status-approved">Complete</span>' : '<span class="status-badge status-pending">Incomplete</span>';
+        
+        if (data.admin_status === 'Accepted') {
+            finalStatus += '<br><span class="status-badge status-approved" style="font-size: 0.7em; margin-top: 4px; display: inline-block;">Admin Accepted</span>';
+        } else if (data.admin_status === 'Rejected') {
+            finalStatus += '<br><span class="status-badge" style="background:#ef4444; color:#fff; font-size: 0.7em; margin-top: 4px; display: inline-block;">Admin Rejected</span>';
+        }
 
         const isComplete = (data.user1_status === 'Signed' && data.user2_status === 'Signed');
         let printBtnHtml = '';
@@ -944,14 +961,22 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {})
             : '';
 
         let deleteBtn = '';
+        let adminActionHtml = '';
         if (window.currentUserData && window.currentUserData.role === 'admin') {
+            if (data.admin_status !== 'Accepted') {
+                adminActionHtml += `<button class="btn btn-icon btn-sm text-success" onclick="adminAcceptDeclaration('${data._id}')" title="Accept Declaration"><i class="fa-solid fa-check"></i></button>`;
+            }
+            if (data.admin_status !== 'Rejected') {
+                adminActionHtml += `<button class="btn btn-icon btn-sm text-warning" onclick="adminRejectDeclaration('${data._id}')" title="Reject Declaration"><i class="fa-solid fa-xmark"></i></button>`;
+            }
             deleteBtn = `<button class="btn btn-icon btn-sm text-danger" onclick="deleteDeclaration('${data._id}')" title="Delete Declaration">
                 <i class="fa-solid fa-trash-can"></i>
             </button>`;
         }
 
         const actionHtml = data._id ? `
-            <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: wrap;">
+                ${adminActionHtml}
                 ${printBtnHtml}
                 ${unlockPrintHtml}
                 ${deleteBtn}
@@ -970,12 +995,48 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {})
             <td>${totalStockInLocker}</td>
             <td>${formatCurrencyValue(outstandingLoan)}</td>
             <td style="vertical-align: top;">${finalStatus}</td>
-            <td style="vertical-align: top;">${actionHtml}</td>
+            <td style="vertical-align: middle;">${actionHtml}</td>
         </tr>`;
     }));
     tbody.innerHTML = rows.join('');
     return rows.length;
 }
+
+window.adminAcceptDeclaration = async function(id) {
+    if (!confirm("Are you sure you want to Accept this declaration?")) return;
+    window.showLoader();
+    try {
+        await window.db.collection("declarations").doc(id).update({
+            admin_status: 'Accepted',
+            admin_action_at: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        window.showToast("Declaration accepted.", "success");
+        if (document.getElementById('form-admin-filter-reports')) {
+            document.getElementById('form-admin-filter-reports').dispatchEvent(new Event('submit'));
+        }
+    } catch (err) {
+        window.showToast(err.message, "error");
+    }
+    window.hideLoader();
+};
+
+window.adminRejectDeclaration = async function(id) {
+    if (!confirm("Are you sure you want to Reject this declaration?")) return;
+    window.showLoader();
+    try {
+        await window.db.collection("declarations").doc(id).update({
+            admin_status: 'Rejected',
+            admin_action_at: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        window.showToast("Declaration rejected.", "success");
+        if (document.getElementById('form-admin-filter-reports')) {
+            document.getElementById('form-admin-filter-reports').dispatchEvent(new Event('submit'));
+        }
+    } catch (err) {
+        window.showToast(err.message, "error");
+    }
+    window.hideLoader();
+};
 
 window.enableBranchPrint = async (id) => {
     if (!confirm("Are you sure you want to re-enable branch printing for this declaration?")) return;
@@ -1202,8 +1263,22 @@ async function loadAdminKeyReports(filters = {}) {
             const tDate = new Date(filters.toDate); tDate.setHours(23, 59, 59, 999);
             filteredDocs = filteredDocs.filter(doc => doc.data().created_at && doc.data().created_at.toDate() <= tDate);
         }
+        if (filters.status && filters.status !== 'all') {
+            filteredDocs = filteredDocs.filter(doc => doc.data().status === filters.status);
+        }
+
+        const branchSnap = await window.db.collection("branches").get();
+        const branchMap = {};
+        branchSnap.forEach(b => {
+             branchMap[b.id] = b.data().name || b.id;
+        });
+
         tbody.innerHTML = filteredDocs.map(docSnap => {
             const data = docSnap.data();
+            const senderBranchName = branchMap[data.branch_id] || data.branch_id || 'Unknown';
+            const receiverBranchName = branchMap[data.receiver_branch_id] || data.receiver_branch_id || 'Unknown';
+            const senderDisplay = `${escapeHtml(data.sender_name)} (${escapeHtml(senderBranchName)})`;
+            const receiverDisplay = `${escapeHtml(data.receiver_name)} (${escapeHtml(receiverBranchName)})`;
             const typeInfo = data.transfer_type === 'temporary' ? `Temp (${data.from_date} to ${data.to_date})` : 'Permanent';
             let statusBadge = data.status === 'accepted' ? '<span class="status-badge status-approved">Accepted</span>' :
                 (data.status === 'returned' ? '<span class="status-badge" style="background:#6b7280;color:#fff;">Returned</span>' :
@@ -1212,19 +1287,40 @@ async function loadAdminKeyReports(filters = {}) {
             let actionHtml = '-';
             if (data.status === 'returned') {
                 if (data.print_taken) {
-                    actionHtml = `<button class="btn btn-icon btn-sm text-primary" onclick="window.enableKeyTransferPrint('${docSnap.id}')" style="display:block;"><i class="fa-solid fa-unlock"></i></button>
-                                  <button class="btn btn-icon btn-sm text-primary" onclick="window.printKeyTransferReceipt('${docSnap.id}')" style="display:block;"><i class="fa-solid fa-print"></i></button>`;
+                    actionHtml = `<div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">
+                                    <button class="btn btn-icon btn-sm text-primary" onclick="window.enableKeyTransferPrint('${docSnap.id}')" title="Enable Print"><i class="fa-solid fa-unlock"></i></button>
+                                    <button class="btn btn-icon btn-sm text-primary" onclick="window.printKeyTransferReceipt('${docSnap.id}')" title="Print"><i class="fa-solid fa-print"></i></button>
+                                  </div>`;
                 } else {
-                    actionHtml = `<button class="btn btn-icon btn-sm text-primary" onclick="window.printKeyTransferReceipt('${docSnap.id}')" style="display:block;"><i class="fa-solid fa-print"></i></button>`;
+                    actionHtml = `<div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">
+                                    <button class="btn btn-icon btn-sm text-primary" onclick="window.printKeyTransferReceipt('${docSnap.id}')" title="Print"><i class="fa-solid fa-print"></i></button>
+                                  </div>`;
                 }
+            } else if (data.status === 'pending') {
+                actionHtml = `<div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">
+                                <button class="btn btn-success btn-sm" onclick="window.adminAcceptKeyTransfer('${docSnap.id}')" title="Accept on behalf of user"><i class="fa-solid fa-check"></i> Accept</button>
+                                <button class="btn btn-warning btn-sm" onclick="window.adminRejectKeyTransfer('${docSnap.id}')" title="Reject on behalf of user"><i class="fa-solid fa-xmark"></i> Reject</button>
+                              </div>`;
             }
+
+            if (actionHtml === '-') {
+                actionHtml = `<div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">`;
+            } else {
+                actionHtml = actionHtml.replace('</div>', '');
+            }
+            
+            if (window.currentUserData && window.currentUserData.role === 'admin') {
+                actionHtml += `<button class="btn btn-danger btn-sm" onclick="window.adminDeleteKeyTransfer('${docSnap.id}')" title="Delete Transfer"><i class="fa-solid fa-trash"></i> Delete</button>`;
+            }
+            
+            actionHtml += `</div>`;
 
             return `<tr>
                 <td>${data.created_at ? data.created_at.toDate().toLocaleString('en-GB') : 'N/A'}</td>
                 <td>${data.accepted_at ? data.accepted_at.toDate().toLocaleString('en-GB') : '-'}</td>
                 <td>${data.returned_at ? data.returned_at.toDate().toLocaleString('en-GB') : '-'}</td>
-                <td>${escapeHtml(data.sender_name)}</td>
-                <td>${escapeHtml(data.receiver_name)}</td>
+                <td>${senderDisplay}</td>
+                <td>${receiverDisplay}</td>
                 <td>${escapeHtml(data.key_number)}</td>
                 <td>${escapeHtml(typeInfo)}</td>
                 <td>${escapeHtml(data.reason)}</td>
@@ -1235,16 +1331,108 @@ async function loadAdminKeyReports(filters = {}) {
     } catch (err) { console.error(err); }
 }
 
-async function initAdminEmergencyTransfer() {
+window.adminDeleteKeyTransfer = async function(transferId) {
+    if (!confirm("Are you sure you want to delete this key transfer? This action cannot be undone.")) return;
+    window.showLoader();
+    try {
+        await window.db.collection("key_transfers").doc(transferId).delete();
+        window.showToast("Transfer deleted successfully.", "success");
+        document.getElementById('form-admin-filter-transfer-history').dispatchEvent(new Event('submit'));
+    } catch (err) {
+        window.showToast(err.message, "error");
+    }
+    window.hideLoader();
+};
+
+window.adminRejectKeyTransfer = async function(transferId) {
+    if (!confirm("Are you sure you want to forcefully reject this key transfer?")) return;
+    window.showLoader();
+    try {
+        await window.db.collection("key_transfers").doc(transferId).update({
+            status: 'rejected',
+            rejected_at: firebase.firestore.FieldValue.serverTimestamp(),
+            rejected_by: 'admin'
+        });
+        window.showToast("Transfer rejected.", "success");
+        document.getElementById('form-admin-filter-transfer-history').dispatchEvent(new Event('submit'));
+    } catch (err) {
+        window.showToast(err.message, "error");
+    }
+    window.hideLoader();
+};
+
+window.adminAcceptKeyTransfer = async function(transferId) {
+    if (!confirm("Are you sure you want to forcefully accept this key transfer on behalf of the user?")) return;
+    window.showLoader();
+    try {
+        const transferDoc = await window.db.collection("key_transfers").doc(transferId).get();
+        if (!transferDoc.exists) throw new Error("Transfer not found");
+        
+        const data = transferDoc.data();
+        if (data.status !== 'pending') throw new Error("Transfer is not pending.");
+
+        await window.db.collection("key_transfers").doc(transferId).update({
+            status: 'accepted',
+            accepted_at: firebase.firestore.FieldValue.serverTimestamp(),
+            accepted_by: 'admin'
+        });
+
+        if (data.transfer_type === 'permanent') {
+            const senderDoc = await window.db.collection("users").doc(data.sender_id).get();
+            let senderRole = 'user';
+            if (senderDoc.exists) {
+                const sData = senderDoc.data();
+                senderRole = sData.role || 'user';
+                const sUpdates = {};
+                if (sData.key1 === data.key_number) sUpdates.key1 = null;
+                if (sData.key2 === data.key_number) sUpdates.key2 = null;
+                if (Object.keys(sUpdates).length > 0) {
+                    await window.db.collection("users").doc(data.sender_id).update(sUpdates);
+                }
+            }
+
+            const receiverDoc = await window.db.collection("users").doc(data.receiver_id).get();
+            if (receiverDoc.exists) {
+                const rData = receiverDoc.data();
+                const rUpdates = {};
+                if (rData.key1 !== data.key_number && rData.key2 !== data.key_number) {
+                    if (!rData.key1) rUpdates.key1 = data.key_number;
+                    else rUpdates.key2 = data.key_number;
+                }
+                if (rData.role === 'user' || !rData.role) {
+                    rUpdates.role = senderRole;
+                }
+                if (Object.keys(rUpdates).length > 0) {
+                    await window.db.collection("users").doc(data.receiver_id).update(rUpdates);
+                }
+            }
+        }
+        window.showToast("Transfer accepted.", "success");
+        document.getElementById('form-admin-filter-transfer-history').dispatchEvent(new Event('submit'));
+    } catch (err) {
+        window.showToast(err.message, "error");
+    }
+    window.hideLoader();
+};
+
+async function initAdminTransfers() {
     const sBS = document.getElementById('admin-kt-sender-branch');
     const rBS = document.getElementById('admin-kt-receiver-branch');
+    const psBS = document.getElementById('admin-pkt-sender-branch');
+    const prBS = document.getElementById('admin-pkt-receiver-branch');
     if (!sBS || !rBS) return;
     try {
         const snap = await window.db.collection("branches").get();
         sBS.innerHTML = rBS.innerHTML = '<option value="" disabled selected>Select Branch...</option>';
+        if (psBS && prBS) {
+            psBS.innerHTML = prBS.innerHTML = '<option value="" disabled selected>Select Branch...</option>';
+        }
         snap.forEach(doc => {
             const opt = `<option value="${doc.id}">${escapeHtml(doc.data().name || doc.id)}</option>`;
             sBS.innerHTML += opt; rBS.innerHTML += opt;
+            if (psBS && prBS) {
+                psBS.innerHTML += opt; prBS.innerHTML += opt;
+            }
         });
     } catch (err) { console.error(err); }
 }
@@ -1306,8 +1494,11 @@ async function loadReturnedKeys() {
                 <td><span class="text-primary" style="font-weight:600;">${escapeHtml(data.key_number)}</span></td>
                 <td>${escapeHtml(data.reason || '-')}</td>
                 <td>
-                    <button class="btn btn-success btn-sm" onclick="acceptResignationKey('${docSnap.id}', '${data.sender_id}', '${escapeHtml(data.key_number)}')">
+                    <button class="btn btn-success btn-sm mb-1" onclick="acceptResignationKey('${docSnap.id}', '${data.sender_id}', '${escapeHtml(data.key_number)}')">
                         <i class="fa-solid fa-check"></i> Accept & Clear Key
+                    </button>
+                    <button class="btn btn-danger btn-sm mb-1" onclick="rejectResignationKey('${docSnap.id}', '${data.sender_id}', '${escapeHtml(data.key_number)}')">
+                        <i class="fa-solid fa-xmark"></i> Reject Return
                     </button>
                 </td>
             `;
@@ -1377,6 +1568,28 @@ window.acceptResignationKey = async (transferId, userId, keyNumber) => {
     window.hideLoader();
 };
 
+window.rejectResignationKey = async (transferId, userId, keyNumber) => {
+    if (!confirm(`Are you sure you want to reject this key return (${keyNumber})? The user will continue using this key and branch.`)) return;
+
+    window.showLoader();
+    try {
+        await window.db.collection("key_transfers").doc(transferId).update({
+            status: 'rejected',
+            rejected_at: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        console.log(`Transfer ${transferId} marked as rejected.`);
+
+        window.showToast("Key return rejected. User will retain the key.", "success");
+
+        await loadReturnedKeys();
+        await loadUsers();
+    } catch (err) {
+        console.error("Rejection error:", err);
+        window.showToast(err.message, "error");
+    }
+    window.hideLoader();
+};
+
 async function loadAdminKeyHoldingsReport(filters = {}) {
     window.showLoader();
     try {
@@ -1432,7 +1645,8 @@ async function loadAdminKeyHoldingsReport(filters = {}) {
                         senderUser.lentKeys.push({
                             key_number: String(data.key_number || '').trim().toUpperCase(),
                             receiver_name: displayName,
-                            isResignation: isResignation
+                            isResignation: isResignation,
+                            transferId: data.id
                         });
                     }
                 } else if (data.transfer_type === 'permanent' && data.status === 'accepted') {
@@ -1442,7 +1656,8 @@ async function loadAdminKeyHoldingsReport(filters = {}) {
                         senderUser.permanentlyTransferredTo.push({
                             key_number: String(data.key_number || '').trim().toUpperCase(),
                             receiver_name: receiverUser ? receiverUser.name : (data.receiver_name || 'Unknown'),
-                            date: acceptedAt
+                            date: acceptedAt,
+                            transferId: data.id
                         });
                     }
                 }
@@ -1470,8 +1685,8 @@ async function loadAdminKeyHoldingsReport(filters = {}) {
                     const lentEntries = user.lentKeys.filter(lk => lk.key_number === searchKey);
                     const lent = lentEntries.length > 0 ? lentEntries[lentEntries.length - 1] : null;
 
-                    const keyData = { number: k, assignedTo: user.name, role: user.role, currentlyWith: lent ? lent.receiver_name : user.name, isLent: !!lent, isResignation: lent ? lent.isResignation : false };
-                    if (!key1Info && (user.role === 'user1' || !key2Info)) key1Info = keyData;
+                    const keyData = { number: k, assignedTo: user.name, role: user.role, currentlyWith: lent ? lent.receiver_name : user.name, isLent: !!lent, isResignation: lent ? lent.isResignation : false, transferId: lent ? lent.transferId : null };
+                    if (!key1Info && (user.role === 'user1' || user.role === 'user1and1' || !key2Info)) key1Info = keyData;
                     else if (!key2Info && (user.role === 'user2' || key1Info.number !== k)) key2Info = keyData;
                     else otherKeys.push(keyData);
                 });
@@ -1494,7 +1709,7 @@ async function loadAdminKeyHoldingsReport(filters = {}) {
                 if (user.branch_id === branchId && user.permanentlyTransferredTo.length > 0) {
                     const seen = new Set();
                     user.permanentlyTransferredTo.sort((a, b) => b.date - a.date).forEach(pt => {
-                        if (!seen.has(pt.key_number)) { seen.add(pt.key_number); warnings.push(`<small class="text-danger d-block mt-1"><i class="fa-solid fa-arrow-right-from-bracket"></i> ${escapeHtml(user.name)} gave ${escapeHtml(pt.key_number)} to ${escapeHtml(pt.receiver_name)}</small>`); }
+                        if (!seen.has(pt.key_number)) { seen.add(pt.key_number); warnings.push(`<small class="text-danger d-block mt-1"><i class="fa-solid fa-arrow-right-from-bracket"></i> ${escapeHtml(user.name)} gave ${escapeHtml(pt.key_number)} to ${escapeHtml(pt.receiver_name)} <button class="btn btn-danger btn-sm mt-1" onclick="undoKeyTransfer('${pt.transferId}', '${escapeHtml(pt.key_number)}', 'permanent')" style="font-size:0.75em;"><i class="fa-solid fa-rotate-left"></i> Undo Transfer</button></small>`); }
                     });
                 }
             });
@@ -1507,11 +1722,13 @@ async function loadAdminKeyHoldingsReport(filters = {}) {
                     return `<span class="status-badge" style="background:#ef4444; color:#fff; font-size:0.8em;"><i class="fa-solid fa-building-shield"></i> ${escapeHtml(info.currentlyWith)}</span>`;
                 }
                 if (info.isLent) {
-                    return `<span class="text-warning fw-bold"><i class="fa-solid fa-hand-holding-hand"></i> ${escapeHtml(info.currentlyWith)}</span>`;
+                    let btnHtml = info.transferId ? `<br><button class="btn btn-warning btn-sm mt-1" onclick="undoKeyTransfer('${info.transferId}', '${escapeHtml(info.number)}', 'temporary')" style="font-size:0.75em;"><i class="fa-solid fa-rotate-left"></i> Send Back</button>` : '';
+                    return `<span class="text-warning fw-bold"><i class="fa-solid fa-hand-holding-hand"></i> ${escapeHtml(info.currentlyWith)}</span>${btnHtml}`;
                 }
                 return `<span>${escapeHtml(info.currentlyWith)}</span>`;
             };
             let detailsHtml = otherKeys.map(k => `<span>${escapeHtml(k.number)} assigned to ${escapeHtml(k.assignedTo)}${k.isLent ? ' (Lent to ' + escapeHtml(k.currentlyWith) + ')' : ''}</span><br>`).join('') + warnings.join('');
+            
             const tr = document.createElement('tr');
             tr.innerHTML = `<td><strong>${escapeHtml(branchMap[branchId] || branchId)}</strong></td><td>${formatKey(key1Info)}</td><td>${formatHolder(key1Info)}</td><td>${formatKey(key2Info)}</td><td>${formatHolder(key2Info)}</td><td>${detailsHtml || '-'}</td>`;
             tbody.appendChild(tr); shownCount++;
@@ -1559,13 +1776,7 @@ setTimeout(() => {
             }
         });
 
-        document.getElementById('admin-kt-type').addEventListener('change', (e) => {
-            if (e.target.value === 'temporary') {
-                document.getElementById('admin-kt-dates').classList.remove('hidden');
-            } else {
-                document.getElementById('admin-kt-dates').classList.add('hidden');
-            }
-        });
+
 
         ktForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -1589,7 +1800,7 @@ setTimeout(() => {
             const senderBranchId = document.getElementById('admin-kt-sender-branch').value;
             const receiverBranchId = document.getElementById('admin-kt-receiver-branch').value;
 
-            if (transferType === 'temporary' && (!fromDate || !toDate)) {
+            if (!fromDate || !toDate) {
                 return window.showToast("Please select both dates for temporary transfer.", "error");
             }
 
@@ -1612,7 +1823,76 @@ setTimeout(() => {
                 });
                 window.showToast("Emergency key transfer request sent successfully!", "success");
                 ktForm.reset();
-                document.getElementById('admin-kt-dates').classList.add('hidden');
+            } catch (error) {
+                window.showToast(error.message, "error");
+            }
+            window.hideLoader();
+        });
+    }
+
+    const pktForm = document.getElementById('form-admin-permanent-transfer');
+    if (pktForm) {
+        document.getElementById('admin-pkt-sender-branch').addEventListener('change', async (e) => {
+            await loadAdminKTUsers(e.target.value, 'admin-pkt-sender-user');
+        });
+
+        document.getElementById('admin-pkt-receiver-branch').addEventListener('change', async (e) => {
+            await loadAdminKTUsers(e.target.value, 'admin-pkt-receiver-user');
+        });
+
+        document.getElementById('admin-pkt-sender-user').addEventListener('change', (e) => {
+            const select = e.target;
+            const opt = select.options[select.selectedIndex];
+            const keySelect = document.getElementById('admin-pkt-number');
+            keySelect.innerHTML = '<option value="" disabled selected>Select Key...</option>';
+
+            if (opt.dataset.key1) keySelect.innerHTML += `<option value="${opt.dataset.key1}">${opt.dataset.key1}</option>`;
+            if (opt.dataset.key2) keySelect.innerHTML += `<option value="${opt.dataset.key2}">${opt.dataset.key2}</option>`;
+
+            if (keySelect.options.length <= 1) {
+                keySelect.innerHTML = '<option value="" disabled selected>No keys assigned</option>';
+            }
+        });
+
+        pktForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const senderSelect = document.getElementById('admin-pkt-sender-user');
+            const receiverSelect = document.getElementById('admin-pkt-receiver-user');
+
+            if (!senderSelect.value || !receiverSelect.value) {
+                return window.showToast("Please select both sender and receiver.", "error");
+            }
+
+            const senderId = senderSelect.value;
+            const senderName = senderSelect.options[senderSelect.selectedIndex].dataset.name;
+            const receiverId = receiverSelect.value;
+            const receiverName = receiverSelect.options[receiverSelect.selectedIndex].dataset.name;
+            const keyNumber = document.getElementById('admin-pkt-number').value;
+            const transferType = document.getElementById('admin-pkt-type').value;
+            const reason = document.getElementById('admin-pkt-reason').value;
+
+            const senderBranchId = document.getElementById('admin-pkt-sender-branch').value;
+            const receiverBranchId = document.getElementById('admin-pkt-receiver-branch').value;
+
+            window.showLoader();
+            try {
+                await window.db.collection("key_transfers").add({
+                    branch_id: senderBranchId,
+                    sender_id: senderId,
+                    sender_name: senderName,
+                    receiver_id: receiverId,
+                    receiver_name: receiverName,
+                    receiver_branch_id: receiverBranchId,
+                    key_number: keyNumber,
+                    transfer_type: transferType,
+                    from_date: null,
+                    to_date: null,
+                    reason: reason,
+                    status: 'pending',
+                    created_at: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                window.showToast("Permanent key transfer request sent successfully!", "success");
+                pktForm.reset();
             } catch (error) {
                 window.showToast(error.message, "error");
             }
@@ -1753,7 +2033,7 @@ async function loadResignedUsers() {
             if (!data.is_resigned) return;
 
             // Try to get branch name from map, then from the user record directly if stored, then ID
-            const branchName = (data.role === 'admin' || data.role === 'hr') ? 'N/A' : (branchMap[data.branch_id] || data.branch_name || data.branch_id || '-');
+            const branchName = (data.role === 'admin' || data.role === 'hr' || data.role === 'ho') ? 'N/A' : (branchMap[data.branch_id] || data.branch_name || data.branch_id || '-');
             users.push({ docSnap, data, branchName });
         });
 
@@ -1863,3 +2143,46 @@ async function loadAuditLogs() {
     window.hideLoader();
 }
 window.loadAuditLogs = loadAuditLogs;
+
+window.undoKeyTransfer = async (transferId, keyNumber, type) => {
+    if (!confirm(`Are you sure you want to forcefully send back key ${keyNumber}?`)) return;
+    window.showLoader();
+    try {
+        const transferDoc = await window.db.collection("key_transfers").doc(transferId).get();
+        if (transferDoc.exists) {
+            const data = transferDoc.data();
+            if (type === 'permanent') {
+                const senderId = data.sender_id;
+                const receiverId = data.receiver_id;
+                const senderDoc = await window.db.collection("users").doc(senderId).get();
+                const receiverDoc = await window.db.collection("users").doc(receiverId).get();
+                
+                if (senderDoc.exists) {
+                    const sData = senderDoc.data();
+                    const sUpdates = {};
+                    if (!sData.key1) sUpdates.key1 = keyNumber;
+                    else if (!sData.key2) sUpdates.key2 = keyNumber;
+                    if (Object.keys(sUpdates).length > 0) await window.db.collection("users").doc(senderId).update(sUpdates);
+                }
+                if (receiverDoc.exists) {
+                    const rData = receiverDoc.data();
+                    const rUpdates = {};
+                    if (rData.key1 === keyNumber) rUpdates.key1 = null;
+                    if (rData.key2 === keyNumber) rUpdates.key2 = null;
+                    if (Object.keys(rUpdates).length > 0) await window.db.collection("users").doc(receiverId).update(rUpdates);
+                }
+            }
+            await window.db.collection("key_transfers").doc(transferId).update({
+                status: 'returned',
+                returned_at: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            window.showToast("Key sent back successfully.", "success");
+            const dateStr = document.getElementById('admin-filter-holdings-date') ? document.getElementById('admin-filter-holdings-date').value : undefined;
+            const branchId = document.getElementById('admin-filter-holdings-branch') ? document.getElementById('admin-filter-holdings-branch').value : undefined;
+            loadAdminKeyHoldingsReport({ date: dateStr, branchId: branchId });
+        }
+    } catch (e) {
+        window.showToast(e.message, "error");
+    }
+    window.hideLoader();
+};
