@@ -357,14 +357,14 @@ window.toggleResignedUsers = () => {
     if (showResignedUsers) {
         btn.classList.add('active');
         btn.innerHTML = '<i class="fa-solid fa-users"></i> <span>View Active Users</span>';
-      
+
         activeContainer.classList.add('hidden');
         resignedContainer.classList.remove('hidden');
         loadResignedUsers();
     } else {
         btn.classList.remove('active');
         btn.innerHTML = '<i class="fa-solid fa-user-slash"></i> <span>View Resigned Users</span>';
-        
+
         resignedContainer.classList.add('hidden');
         activeContainer.classList.remove('hidden');
         loadUsers();
@@ -406,7 +406,7 @@ async function loadUsers() {
 
         // Store users data for search filtering
         window.allUsersData = users;
-        
+
         // Clear search input
         const searchInput = document.getElementById('user-branch-filter-search');
         if (searchInput) searchInput.value = '';
@@ -434,7 +434,7 @@ function displayUsers(usersToDisplay) {
         else if (data.role === 'user2') roleBadge = '<span class="status-badge status-pending" style="color:#8b5cf6; background:rgba(139, 92, 246, 0.2)">User 2</span>';
         else roleBadge = '<span class="status-badge status-pending">Reserve</span>';
 
-        const statusBadge = '<span class="status-badge" style="background:#dcfce7; color:#15803d;">Active</span>';
+        const statusBadge = '<span class="status-badge" style="background:#dcfce7; color:#15803d;"><i class="fa-solid fa-user-check"></i></span>';
 
         const keys = [];
         if (data.key1) keys.push(data.key1);
@@ -451,11 +451,10 @@ function displayUsers(usersToDisplay) {
 
         tr.innerHTML = `
             <td><strong>${escapeHtml(data.name)}</strong></td>
-            <td>${escapeHtml(data.locker_number || '-')}</td>
-            <td>${escapeHtml(keyDisplay)}</td>
             <td>${escapeHtml(data.email)}</td>
-            <td>${roleBadge}</td>
             <td>${escapeHtml(branchName)}</td>
+            <td>${escapeHtml(keyDisplay)}</td>
+            <td>${roleBadge}</td>
             <td>${statusBadge}</td>
             <td>
                 <button class="btn btn-secondary btn-sm" onclick="openEditUser('${docSnap.id}', '${safeName}', '${safeRole}', '${safeBranch}', '${safeKey1}', '${safeKey2}', false, '${safeEmail}')" title="Edit User">
@@ -585,7 +584,7 @@ document.getElementById('form-edit-user').addEventListener('submit', async (e) =
         if (needsAuth) {
             let currentPassword = userData.password;
             const email = userData.email;
-            
+
             if (!currentPassword) {
                 currentPassword = prompt(`This user was created without a saved password. Please enter the user's CURRENT password to allow changing credentials, or click Cancel:`);
                 if (!currentPassword) {
@@ -593,23 +592,23 @@ document.getElementById('form-edit-user').addEventListener('submit', async (e) =
                     return;
                 }
             }
-            
+
             const secAppName = "UpdateCredsApp" + Date.now();
             const secondaryApp = firebase.initializeApp(window.firebaseConfig, secAppName);
             try {
                 const userCreds = await secondaryApp.auth().signInWithEmailAndPassword(email, currentPassword);
-                
+
                 if (newPassword && newPassword.trim().length > 0) {
                     if (newPassword.trim().length < 6) throw new Error("Password must be at least 6 characters long.");
                     await userCreds.user.updatePassword(newPassword);
                     updates.password = newPassword;
                 }
-                
+
                 if (newEmail && newEmail.trim() !== '' && newEmail !== userData.email) {
                     await userCreds.user.updateEmail(newEmail);
                     updates.email = newEmail;
                 }
-                
+
                 await secondaryApp.auth().signOut();
                 await secondaryApp.delete();
             } catch (authErr) {
@@ -795,11 +794,14 @@ function formatCashBreakdown(denominations = {}) {
     return parts.length ? parts.join(', ') : 'No denomination details';
 }
 
-async function getDeclarationDaySummary(branchId, date) {
+async function getDeclarationDaySummary(branchId, date, declarationData = null) {
     const summary = {
         stockInEntries: [], stockOutEntries: [], cashEntries: [], appraisalEntries: [],
         approvedCashTotal: 0, approvedAppraised: 0, approvedNotAppraised: 0
     };
+    
+    const isMaker1and1 = declarationData && declarationData.user2_id === "Auto-1and1";
+
     branchId = String(branchId || '');
     const [stockSnap, cashSnap, appraisalSnap] = await Promise.all([
         window.db.collection("stock_transactions").where("branch_id", "==", branchId).get(),
@@ -820,7 +822,7 @@ async function getDeclarationDaySummary(branchId, date) {
         if (getDocDateKey(data) !== date) return;
         const totalAmount = data.total_amount || 0;
         summary.cashEntries.push({ totalAmount, denominations: data.denominations || {}, status: data.status || 'pending' });
-        if (data.status === 'approved') summary.approvedCashTotal += totalAmount;
+        summary.approvedCashTotal += totalAmount;
     });
 
     appraisalSnap.forEach(docSnap => {
@@ -829,10 +831,8 @@ async function getDeclarationDaySummary(branchId, date) {
         const appraised = data.appraised || 0;
         const notAppraised = data.not_appraised || 0;
         summary.appraisalEntries.push({ appraised, notAppraised, status: data.status || 'pending' });
-        if (data.status === 'approved') {
-            summary.approvedAppraised += appraised;
-            summary.approvedNotAppraised += notAppraised;
-        }
+        summary.approvedAppraised += appraised;
+        summary.approvedNotAppraised += notAppraised;
     });
     return summary;
 }
@@ -846,7 +846,7 @@ function formatStockNumbers(entries) {
     return entries.map(entry => escapeHtml(entry.stockNumber || 'Unknown')).join(', ');
 }
 
-async function renderDeclarationTable(tableSelector, limit = null, filters = {}) {
+async function renderDeclarationTable(tableSelector, limit = null, filters = {}, showActions = true, showPrintButtons = true) {
     let query = window.db.collection("declarations").orderBy("date", "desc");
     if (limit) query = query.limit(limit);
 
@@ -911,17 +911,17 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {})
         const branchName = branchDataObj.name || "Unknown";
         if (data.isDummy) {
             return `<tr style="background: rgba(239, 68, 68, 0.02);">
-                <td style="vertical-align: top;"><strong>${escapeHtml(formatDateDisplay(data.date))}</strong></td>
-                <td style="vertical-align: top;"><strong>${escapeHtml(branchName)}</strong></td>
-                <td><span class="status-badge status-pending" style="color:#ef4444; background:rgba(239, 68, 68, 0.1);">Not Declared</span></td>
-                <td><span class="status-badge status-pending" style="color:#ef4444; background:rgba(239, 68, 68, 0.1);">Not Declared</span></td>
+                <td style="vertical-align: center;"><strong>${escapeHtml(formatDateDisplay(data.date))}</strong></td>
+                <td style="vertical-align: center;"><strong>${escapeHtml(branchName)}</strong></td>
+                <td><span class="status-badge status-pending" style="color:#ef4444; background:rgba(239, 68, 68, 0.1);"><i class="fa-solid fa-hourglass-start"></i></span></td>
+                <td><span class="status-badge status-pending" style="color:#ef4444; background:rgba(239, 68, 68, 0.1);"><i class="fa-solid fa-hourglass-start"></span></td>
                 <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
-                <td style="vertical-align: top;"><span class="status-badge status-pending" style="color:#ef4444; background:rgba(239, 68, 68, 0.1);">Missing</span></td>
-                <td style="vertical-align: top; text-align: center;">-</td>
+                <td style="vertical-align: center; font-size: .6em;"><span class="status-badge status-pending" style="color:#ef4444; background:rgba(239, 68, 68, 0.1);"><i class="fa-solid fa-x"></i></span></td>
+                
             </tr>`;
         }
 
-        const approvedSummary = await getDeclarationDaySummary(data.branch_id, data.date);
+        const approvedSummary = await getDeclarationDaySummary(data.branch_id, data.date, data);
         const branchData = branchSnap.docs.find(branchDoc => branchDoc.id === data.branch_id)?.data() || {};
         const totalsSnap = await window.db.collection("daily_totals").where("branch_id", "==", data.branch_id).where("date", "==", data.date).get();
 
@@ -933,56 +933,50 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {})
             outstandingLoan = tData.outstanding_loan !== undefined ? tData.outstanding_loan : outstandingLoan;
         }
 
-        const mKeyStr = (data.user1_key1 || data.user1_key2) ? `<br><small class="text-primary"><i class="fa-solid fa-key"></i> ${escapeHtml([data.user1_key1, data.user1_key2].filter(Boolean).join(', '))}</small>` : '';
-        const cKeyStr = (data.user2_key1 || data.user2_key2) ? `<br><small class="text-primary"><i class="fa-solid fa-key"></i> ${escapeHtml([data.user2_key1, data.user2_key2].filter(Boolean).join(', '))}</small>` : '';
-        const makerInfo = data.user1_status === 'Signed' ? `<strong>${escapeHtml(data.user1_name || 'Signed')}</strong>${mKeyStr}` : '<span class="status-badge status-pending">Pending</span>';
-        const checkerInfo = data.user2_status === 'Signed' ? `<strong>${escapeHtml(data.user2_name || 'Signed')}</strong>${cKeyStr}` : '<span class="status-badge status-pending">Pending</span>';
-        let finalStatus = data.user1_status === 'Signed' && data.user2_status === 'Signed' ? '<span class="status-badge status-approved">Complete</span>' : '<span class="status-badge status-pending">Incomplete</span>';
-        
-        if (data.admin_status === 'Accepted') {
-            finalStatus += '<br><span class="status-badge status-approved" style="font-size: 0.7em; margin-top: 4px; display: inline-block;">Admin Accepted</span>';
-        } else if (data.admin_status === 'Rejected') {
-            finalStatus += '<br><span class="status-badge" style="background:#ef4444; color:#fff; font-size: 0.7em; margin-top: 4px; display: inline-block;">Admin Rejected</span>';
-        }
+        const mKeyStr = (data.user1_key1 || data.user1_key2) ? `<br><small class="text-primary"><i class="fa-solid fa-key" style="font-size: 0.5rem;"></i> ${escapeHtml([data.user1_key1, data.user1_key2].filter(Boolean).join(', '))}</small>` : '';
+        const cKeyStr = (data.user2_key1 || data.user2_key2) ? `<br><small class="text-primary"><i class="fa-solid fa-key" style="font-size: 0.5rem;"></i> ${escapeHtml([data.user2_key1, data.user2_key2].filter(Boolean).join(', '))}</small>` : '';
+        const makerInfo = data.user1_status === 'Signed' ? `${escapeHtml(data.user1_name || 'Signed')}${mKeyStr}` : '<span class="status-badge status-pending"><i class="fa-solid fa-hourglass-start"></i></span>';
+        const checkerInfo = data.user2_status === 'Signed' ? `${escapeHtml(data.user2_name || 'Signed')}${cKeyStr}` : '<span class="status-badge status-pending"><i class="fa-solid fa-hourglass-start"></i></span>';
+        let finalStatus = data.user1_status === 'Signed' && data.user2_status === 'Signed' ? '<span class="status-badge status-approved"><i class="fa-solid fa-check"></i></span>' : '<span class="status-badge status-pending"><i class="fa-solid fa-clock"></i></span>';
+
 
         const isComplete = (data.user1_status === 'Signed' && data.user2_status === 'Signed');
         let printBtnHtml = '';
-        if (isComplete && data.print_taken) {
-            printBtnHtml = `<button class="btn btn-icon btn-sm text-primary" onclick="window.printSingleDeclaration('${data.branch_id}', '${data.date}')" title="Print A4 Declaration" style="margin-right: 6px;">
-                <i class="fa-solid fa-print"></i>
-               </button>`;
-        } else if (isComplete && !data.print_taken) {
-            printBtnHtml = `<button class="btn btn-icon btn-sm" disabled style="opacity: 0.4; cursor: not-allowed; margin-right: 6px; color: #f59e0b;" title="Waiting for Branch to Print">
-                <i class="fa-solid fa-print"></i>
-               </button>`;
-        } else {
-            printBtnHtml = `<button class="btn btn-icon btn-sm" disabled style="opacity: 0.4; cursor: not-allowed; margin-right: 6px;" title="Pending Maker & Checker signatures">
-                <i class="fa-solid fa-print"></i>
-               </button>`;
-        }
+        let unlockPrintHtml = '';
 
-        const unlockPrintHtml = data.print_taken
-            ? `<button class="btn btn-icon btn-sm text-success" onclick="enableBranchPrint('${data._id}')" title="Re-enable Branch Print">
-                <i class="fa-solid fa-unlock"></i>
-               </button>`
-            : '';
+        if (showPrintButtons) {
+            if (isComplete && data.print_taken) {
+                printBtnHtml = `<button class="btn btn-icon btn-sm text-primary" onclick="window.printSingleDeclaration('${data.branch_id}', '${data.date}')" title="Print A4 Declaration" style="margin-right: 6px;">
+                    <i class="fa-solid fa-print"></i>
+                   </button>`;
+            } else if (isComplete && !data.print_taken) {
+                printBtnHtml = `<button class="btn btn-icon btn-sm" disabled style="opacity: 0.4; cursor: not-allowed; margin-right: 6px; color: #f59e0b;" title="Waiting for Branch to Print">
+                    <i class="fa-solid fa-print"></i>
+                   </button>`;
+            } else {
+                printBtnHtml = `<button class="btn btn-icon btn-sm" disabled style="opacity: 0.4; cursor: not-allowed; margin-right: 6px;" title="Pending Maker & Checker signatures">
+                    <i class="fa-solid fa-print"></i>
+                   </button>`;
+            }
+
+            unlockPrintHtml = data.print_taken
+                ? `<button class="btn btn-icon btn-sm text-success" onclick="enableBranchPrint('${data._id}')" title="Re-enable Branch Print">
+                    <i class="fa-solid fa-unlock"></i>
+                   </button>`
+                : '';
+        }
 
         let deleteBtn = '';
         let adminActionHtml = '';
-        if (window.currentUserData && window.currentUserData.role === 'admin') {
-            if (data.admin_status !== 'Accepted') {
-                adminActionHtml += `<button class="btn btn-icon btn-sm text-success" onclick="adminAcceptDeclaration('${data._id}')" title="Accept Declaration"><i class="fa-solid fa-check"></i></button>`;
-            }
-            if (data.admin_status !== 'Rejected') {
-                adminActionHtml += `<button class="btn btn-icon btn-sm text-warning" onclick="adminRejectDeclaration('${data._id}')" title="Reject Declaration"><i class="fa-solid fa-xmark"></i></button>`;
-            }
-            deleteBtn = `<button class="btn btn-icon btn-sm text-danger" onclick="deleteDeclaration('${data._id}')" title="Delete Declaration">
+        if (showActions && window.currentUserData && window.currentUserData.role === 'admin') {
+
+            deleteBtn = `<button class="btn btn-icon btn-sm text-primary" onclick="deleteDeclaration('${data._id}')" title="Delete Declaration">
                 <i class="fa-solid fa-trash-can"></i>
             </button>`;
         }
 
         const actionHtml = data._id ? `
-            <div style="display: flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: wrap;">
+            <div style="display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 2px;">
                 ${adminActionHtml}
                 ${printBtnHtml}
                 ${unlockPrintHtml}
@@ -991,8 +985,8 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {})
         ` : '-';
 
         return `<tr>
-            <td style="vertical-align: top;"><strong>${escapeHtml(formatDateDisplay(data.date))}</strong></td>
-            <td style="vertical-align: top;"><strong>${escapeHtml(branchName)}</strong></td>
+            <td style="vertical-align: top;">${escapeHtml(formatDateDisplay(data.date))}</td>
+            <td style="vertical-align: top;">${escapeHtml(branchName)}</td>
             <td>${makerInfo}</td><td>${checkerInfo}</td>
             <td>${formatStockNumbers(approvedSummary.stockInEntries)}</td>
             <td>${formatStockNumbers(approvedSummary.stockOutEntries)}</td>
@@ -1001,15 +995,15 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {})
             <td>${approvedSummary.approvedNotAppraised}</td>
             <td>${totalStockInLocker}</td>
             <td>${formatCurrencyValue(outstandingLoan)}</td>
-            <td style="vertical-align: top;">${finalStatus}</td>
-            <td style="vertical-align: middle;">${actionHtml}</td>
+            <td style="vertical-align: center;">${finalStatus}</td>
+            <td>${actionHtml}</td>
         </tr>`;
     }));
     tbody.innerHTML = rows.join('');
     return rows.length;
 }
 
-window.adminAcceptDeclaration = async function(id) {
+window.adminAcceptDeclaration = async function (id) {
     if (!confirm("Are you sure you want to Accept this declaration?")) return;
     window.showLoader();
     try {
@@ -1027,7 +1021,7 @@ window.adminAcceptDeclaration = async function(id) {
     window.hideLoader();
 };
 
-window.adminRejectDeclaration = async function(id) {
+window.adminRejectDeclaration = async function (id) {
     if (!confirm("Are you sure you want to Reject this declaration?")) return;
     window.showLoader();
     try {
@@ -1047,7 +1041,7 @@ window.adminRejectDeclaration = async function(id) {
 
 window.enableBranchPrint = async (id) => {
     if (!confirm("Are you sure you want to re-enable branch printing for this declaration?")) return;
-    
+
     window.showLoader();
     try {
         await window.db.collection("declarations").doc(id).update({
@@ -1057,7 +1051,7 @@ window.enableBranchPrint = async (id) => {
         window.showToast("Branch printing re-enabled.", "success");
         loadDeclarations();
         loadAdminReports();
-    } catch(err) {
+    } catch (err) {
         window.showToast(err.message, "error");
     }
     window.hideLoader();
@@ -1187,8 +1181,8 @@ async function loadDeclarations(selectedDate = null) {
                 lastActiveDateStr = latestTx.docs[0].data().timestamp.toDate().toISOString().split('T')[0];
             }
         }
-        await renderDeclarationTable('#table-declarations-art', 20, { fromDate: lastActiveDateStr, toDate: lastActiveDateStr, company: 'ART LEASING' });
-        await renderDeclarationTable('#table-declarations-nidhi', 20, { fromDate: lastActiveDateStr, toDate: lastActiveDateStr, company: 'CHEGANNUR NIDHI' });
+        await renderDeclarationTable('#table-declarations-art', 60, { fromDate: lastActiveDateStr, toDate: lastActiveDateStr, company: 'ART LEASING' }, false, false);
+        await renderDeclarationTable('#table-declarations-nidhi', 70, { fromDate: lastActiveDateStr, toDate: lastActiveDateStr, company: 'CHEGANNUR NIDHI' }, false, false);
     } catch (err) { console.error(err); }
 }
 
@@ -1237,10 +1231,17 @@ async function updateAdminFilterBranches(selectedCompany = 'all') {
 async function loadAdminReports(filters = {}) {
     window.showLoader();
     try {
+        // Set default filters to today's date if not provided
+        if (!filters.fromDate && !filters.toDate) {
+            const today = new Date().toISOString().split('T')[0];
+            filters.fromDate = today;
+            filters.toDate = today;
+        }
+        
         const totalReports = await renderDeclarationTable('#table-admin-reports', null, filters);
         const summText = document.querySelector('.report-summary');
         if (summText) summText.textContent = `Total: ${totalReports} Report(s)`;
-        
+
         const companySelect = document.getElementById('admin-filter-company');
         const selectedCompany = companySelect ? companySelect.value : 'all';
         await updateAdminFilterBranches(selectedCompany);
@@ -1277,7 +1278,7 @@ async function loadAdminKeyReports(filters = {}) {
         const branchSnap = await window.db.collection("branches").get();
         const branchMap = {};
         branchSnap.forEach(b => {
-             branchMap[b.id] = b.data().name || b.id;
+            branchMap[b.id] = b.data().name || b.id;
         });
 
         tbody.innerHTML = filteredDocs.map(docSnap => {
@@ -1286,59 +1287,59 @@ async function loadAdminKeyReports(filters = {}) {
             const receiverBranchName = branchMap[data.receiver_branch_id] || data.receiver_branch_id || 'Unknown';
             const senderDisplay = `${escapeHtml(data.sender_name)} (${escapeHtml(senderBranchName)})`;
             const receiverDisplay = `${escapeHtml(data.receiver_name)} (${escapeHtml(receiverBranchName)})`;
-            const typeInfo = data.transfer_type === 'temporary' ? `Temp (${data.from_date} to ${data.to_date})` : 'Permanent';
-            let statusBadge = data.status === 'accepted' ? '<span class="status-badge status-approved">Accepted</span>' :
-                (data.status === 'returned' ? '<span class="status-badge" style="background:#6b7280;color:#fff;">Returned</span>' :
-                    (data.status === 'rejected' || data.status === 'deleted' ? '<span class="status-badge status-pending" style="color:red">Deleted</span>' : '<span class="status-badge status-pending">Pending</span>'));
-            
+            const typeInfo = data.transfer_type === 'temporary' ? `Temp (${formatDateDisplay(data.from_date)} to ${formatDateDisplay(data.to_date)})` : 'Permanent';
+            let statusBadge = data.status === 'accepted' ? '<span class="status-badge status-approved" title="Accepted"><i class="fa-solid fa-check-double"></i></span>' :
+                (data.status === 'returned' ? '<span class="status-badge" style="background:#2868ce;color:#fff;" title="Returned"><i class="fa-solid fa-arrow-rotate-left"></i></span>' :
+                    (data.status === 'rejected' || data.status === 'deleted' ? '<span class="status-badge status-pending" style="color:red" title="Rejected"><i class="fa-solid fa-xmark"></i></span>' : '<span class="status-badge status-pending" title="Pending"><i class="fa-solid fa-spinner"></i></span>'));
+
             let actionHtml = '-';
             if (data.status === 'returned') {
                 if (data.print_taken) {
-                    actionHtml = `<div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">
+                    actionHtml = `<div style="display: flex; gap: 2px; flex-direction: row; justify-content: center;">
                                     <button class="btn btn-icon btn-sm text-primary" onclick="window.enableKeyTransferPrint('${docSnap.id}')" title="Enable Print"><i class="fa-solid fa-unlock"></i></button>
                                     <button class="btn btn-icon btn-sm text-primary" onclick="window.printKeyTransferReceipt('${docSnap.id}')" title="Print"><i class="fa-solid fa-print"></i></button>
                                   </div>`;
                 } else {
-                    actionHtml = `<div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">
+                    actionHtml = `<div style="display: flex; gap: 2px; flex-direction: row; justify-content: center;">
                                     <button class="btn btn-icon btn-sm text-primary" onclick="window.printKeyTransferReceipt('${docSnap.id}')" title="Print"><i class="fa-solid fa-print"></i></button>
                                   </div>`;
                 }
             } else if (data.status === 'pending') {
-                actionHtml = `<div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">
-                                <button class="btn btn-success btn-sm" onclick="window.adminAcceptKeyTransfer('${docSnap.id}')" title="Accept on behalf of user"><i class="fa-solid fa-check"></i> Accept</button>
-                                <button class="btn btn-warning btn-sm" onclick="window.adminRejectKeyTransfer('${docSnap.id}')" title="Reject on behalf of user"><i class="fa-solid fa-xmark"></i> Reject</button>
+                actionHtml = `<div style="display: flex; gap: 2px; flex-direction: row; justify-content: center;">
+                                <button class="btn btn-icon btn-sm text-primary" onclick="window.adminAcceptKeyTransfer('${docSnap.id}')" title="Accept on behalf of user"><i class="fa-solid fa-check"></i></button>
+                                <button class="btn btn-icon btn-sm text-warning" onclick="window.adminRejectKeyTransfer('${docSnap.id}')" title="Reject on behalf of user"><i class="fa-solid fa-xmark"></i></button>
                               </div>`;
             }
 
             if (actionHtml === '-') {
-                actionHtml = `<div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">`;
+                actionHtml = `<div style="display: flex; gap: 2px; flex-direction: row; align-items: center; justify-content: center;">`;
             } else {
                 actionHtml = actionHtml.replace('</div>', '');
             }
-            
+
             if (window.currentUserData && window.currentUserData.role === 'admin') {
-                actionHtml += `<button class="btn btn-danger btn-sm" onclick="window.adminDeleteKeyTransfer('${docSnap.id}')" title="Delete Transfer"><i class="fa-solid fa-trash"></i> Delete</button>`;
+                actionHtml += `<button class="btn btn-icon btn-sm text-primary" onclick="window.adminDeleteKeyTransfer('${docSnap.id}')" title="Delete Transfer"><i class="fa-solid fa-trash-can"></i></button>`;
             }
-            
+
             actionHtml += `</div>`;
 
             return `<tr>
-                <td>${data.created_at ? data.created_at.toDate().toLocaleString('en-GB') : 'N/A'}</td>
-                <td>${data.accepted_at ? data.accepted_at.toDate().toLocaleString('en-GB') : '-'}</td>
-                <td>${data.returned_at ? data.returned_at.toDate().toLocaleString('en-GB') : '-'}</td>
-                <td>${senderDisplay}</td>
-                <td>${receiverDisplay}</td>
-                <td>${escapeHtml(data.key_number)}</td>
-                <td>${escapeHtml(typeInfo)}</td>
-                <td>${escapeHtml(data.reason)}</td>
-                <td>${statusBadge}</td>
-                <td style="vertical-align: center;">${actionHtml}</td>
+                <td style="font-size: 0.7rem;">${data.created_at ? data.created_at.toDate().toLocaleString('en-GB') : 'N/A'}</td>
+                <td style="font-size: 0.7rem;">${data.accepted_at ? data.accepted_at.toDate().toLocaleString('en-GB') : '-'}</td>
+                <td style="font-size: 0.7rem;">${data.returned_at ? data.returned_at.toDate().toLocaleString('en-GB') : '-'}</td>
+                <td style="font-size: 0.7rem;">${senderDisplay}</td>
+                <td style="font-size: 0.7rem;">${receiverDisplay}</td>
+                <td style="font-size: 0.7rem;">${escapeHtml(data.key_number)}</td>
+                <td style="font-size: 0.7rem;">${escapeHtml(typeInfo)}</td>
+                <td style="font-size: 0.7rem;">${escapeHtml(data.reason)}</td>
+                <td style="font-size: 0.7rem;">${statusBadge}</td>
+                <td>${actionHtml}</td>
             </tr>`;
         }).join('');
     } catch (err) { console.error(err); }
 }
 
-window.adminDeleteKeyTransfer = async function(transferId) {
+window.adminDeleteKeyTransfer = async function (transferId) {
     if (!confirm("Are you sure you want to delete this key transfer? This action cannot be undone.")) return;
     window.showLoader();
     try {
@@ -1351,7 +1352,7 @@ window.adminDeleteKeyTransfer = async function(transferId) {
     window.hideLoader();
 };
 
-window.adminRejectKeyTransfer = async function(transferId) {
+window.adminRejectKeyTransfer = async function (transferId) {
     if (!confirm("Are you sure you want to forcefully reject this key transfer?")) return;
     window.showLoader();
     try {
@@ -1368,13 +1369,13 @@ window.adminRejectKeyTransfer = async function(transferId) {
     window.hideLoader();
 };
 
-window.adminAcceptKeyTransfer = async function(transferId) {
+window.adminAcceptKeyTransfer = async function (transferId) {
     if (!confirm("Are you sure you want to forcefully accept this key transfer on behalf of the user?")) return;
     window.showLoader();
     try {
         const transferDoc = await window.db.collection("key_transfers").doc(transferId).get();
         if (!transferDoc.exists) throw new Error("Transfer not found");
-        
+
         const data = transferDoc.data();
         if (data.status !== 'pending') throw new Error("Transfer is not pending.");
 
@@ -1735,7 +1736,7 @@ async function loadAdminKeyHoldingsReport(filters = {}) {
                 return `<span>${escapeHtml(info.currentlyWith)}</span>`;
             };
             let detailsHtml = otherKeys.map(k => `<span>${escapeHtml(k.number)} assigned to ${escapeHtml(k.assignedTo)}${k.isLent ? ' (Lent to ' + escapeHtml(k.currentlyWith) + ')' : ''}</span><br>`).join('') + warnings.join('');
-            
+
             const tr = document.createElement('tr');
             tr.innerHTML = `<td><strong>${escapeHtml(branchMap[branchId] || branchId)}</strong></td><td>${formatKey(key1Info)}</td><td>${formatHolder(key1Info)}</td><td>${formatKey(key2Info)}</td><td>${formatHolder(key2Info)}</td><td>${detailsHtml || '-'}</td>`;
             tbody.appendChild(tr); shownCount++;
@@ -1988,7 +1989,7 @@ async function loadBackdateApprovals() {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${branchName}</strong></td>
-                    <td>${data.date}</td>
+                    <td>${formatDateDisplay(data.date)}</td>
                     <td class="text-muted" style="font-size:0.9em;">${approvedAt}</td>
                     <td><span class="status-badge ${statusClass}">${data.status}</span></td>
                     <td>${deleteBtnHtml}</td>
@@ -2078,7 +2079,7 @@ async function loadResignedUsers() {
                 <td>${resignedDt}</td>
                 <td>
                     <button class="btn btn-secondary btn-sm" onclick="openEditUser('${docSnap.id}', '${safeName}', '${safeRole}', '${safeBranch}', '${safeKey1}', '${safeKey2}', true, '${safeEmail}')" title="View/Edit Details">
-                        <i class="fa-solid fa-eye"></i> View
+                        <i class="fa-solid fa-eye"></i>
                     </button>
                 </td>
             `;
@@ -2109,7 +2110,13 @@ async function loadAuditLogs() {
             query = query.where("type", "==", typeFilter);
         }
 
-        const snap = await query.get();
+        const [snap, branchSnap] = await Promise.all([
+            query.get(),
+            window.db.collection("branches").get()
+        ]);
+        const branchMap = {};
+        branchSnap.forEach(b => branchMap[b.id] = b.data().name || b.id);
+
         const tbody = document.querySelector('#table-audit-logs tbody');
         if (!tbody) return;
         tbody.innerHTML = '';
@@ -2135,9 +2142,10 @@ async function loadAuditLogs() {
         tbody.innerHTML = logs.map(data => {
             const ts = data.timestamp ? data.timestamp.toDate().toLocaleString('en-GB') : 'N/A';
             const actionBadge = `<span class="status-badge" style="background: rgba(79, 240, 47, 0.75); color: #333; font-size:0.8em; margin-right:5px;">${data.type.toUpperCase()}</span>`;
+            const branchName = branchMap[data.branch_id] || data.branch_name || data.branch_id || 'N/A';
             return `<tr>
                 <td style="font-size: 0.85em; white-space: nowrap; color: #ffffffff;">${ts}</td>
-                <td><strong>${escapeHtml(data.user_name)}</strong><br><small class="text-muted" style="font-size:0.7em;">${(data.uid || '').substring(0, 8)}</small></td>
+                <td><strong>${escapeHtml(data.user_name)}</strong><br><small class="text-muted" style="font-size:0.9em; color:#fff">${escapeHtml(branchName)}</small></td>
                 <td><span style="font-size:0.85em;">${escapeHtml(data.user_role)}</span></td>
                 <td>${actionBadge} <strong>${escapeHtml(data.action)}</strong></td>
                 <td style="font-size: 0.85em; color: #ffffffff;">${escapeHtml(data.details)}</td>
@@ -2163,7 +2171,7 @@ window.undoKeyTransfer = async (transferId, keyNumber, type) => {
                 const receiverId = data.receiver_id;
                 const senderDoc = await window.db.collection("users").doc(senderId).get();
                 const receiverDoc = await window.db.collection("users").doc(receiverId).get();
-                
+
                 if (senderDoc.exists) {
                     const sData = senderDoc.data();
                     const sUpdates = {};

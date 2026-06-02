@@ -171,6 +171,23 @@ document.querySelectorAll('.nav-item').forEach(nav => {
     });
 });
 
+document.querySelectorAll('.nav-dropdown-toggle').forEach(toggle => {
+    toggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        const menu = toggle.nextElementSibling;
+        const icon = toggle.querySelector('.fa-chevron-down');
+        if (icon) icon.style.transition = 'transform 0.3s ease';
+
+        if (menu.classList.contains('hidden')) {
+            menu.classList.remove('hidden');
+            if (icon) icon.style.transform = 'rotate(180deg)';
+        } else {
+            menu.classList.add('hidden');
+            if (icon) icon.style.transform = 'rotate(0deg)';
+        }
+    });
+});
+
 // Authentication Flow
 const loginForm = document.getElementById('login-form');
 loginForm.addEventListener('submit', async (e) => {
@@ -635,12 +652,14 @@ window.printSingleDeclaration = async (branchId, dateStr) => {
             if (entry.type === 'OUT') stockOutEntries.push(stockNum);
         });
 
+        const isMaker1and1 = declData.user2_id === "Auto-1and1";
+
         let approvedCashTotal = declData.cash_total || 0;
         let denoms = { '500': 0, '200': 0, '100': 0, '50': 0, '20': 0, '10': 0, 'coins': 0 };
         cashSnap.forEach(d => {
             const entry = d.data();
             if (getDocDateKey(entry) !== dateStr) return;
-            if (entry.status === 'approved') {
+            if (entry.status === 'approved' || (isMaker1and1 && entry.status === 'pending')) {
                 approvedCashTotal = entry.total_amount || 0;
                 denoms = entry.denominations || denoms;
             }
@@ -652,7 +671,7 @@ window.printSingleDeclaration = async (branchId, dateStr) => {
         appraisalSnap.forEach(d => {
             const entry = d.data();
             if (getDocDateKey(entry) !== dateStr) return;
-            if (entry.status === 'approved') {
+            if (entry.status === 'approved' || (isMaker1and1 && entry.status === 'pending')) {
                 appraised = entry.appraised || 0;
                 notAppraised = entry.not_appraised || 0;
                 appraisalStatus = 'Approved';

@@ -214,60 +214,71 @@
             <div id="nav-admin" class="nav-links hidden">
                 <a href="#" class="nav-item active" data-target="admin-overview"><i class="fa-solid fa-chart-pie"></i>
                     Overview</a>
-                <a href="#" class="nav-item" data-target="admin-branches"><i class="fa-solid fa-building"></i>
+                <a href="#" class="nav-item" data-target="admin-branches"><i class="fa-solid fa-building"></i>&nbsp;
                     Branches</a>
-                <a href="#" class="nav-item" data-target="admin-users"><i class="fa-solid fa-users"></i> Users</a>
-
-                <a href="#" class="nav-item" data-target="admin-reports"><i class="fa-solid fa-file-invoice"></i>
+                <a href="#" class="nav-item" data-target="admin-users"><i class="fa-solid fa-users"></i>&nbsp; Users</a>
+                <a href="#" class="nav-item" data-target="admin-reports"><i class="fa-solid fa-file-invoice"></i>&nbsp;
                     Reports</a>
-                <a href="#" class="nav-item" data-target="admin-key-reports"><i class="fa-solid fa-bolt"></i> Emergency
-                    Key Transfer</a>
-                <a href="#" class="nav-item" data-target="admin-permanent-key-transfer"><i class="fa-solid fa-key"></i> Permanent Key Transfer</a>
-                <a href="#" class="nav-item" data-target="admin-transfer-history"><i
-                        class="fa-solid fa-clock-rotate-left"></i> Transfer History</a>
-                <a href="#" class="nav-item" data-target="admin-key-holdings"><i
-                        class="fa-solid fa-users-viewfinder"></i> Key Holdings</a>
-                <a href="#" class="nav-item" data-target="admin-returned-keys"><i
-                        class="fa-solid fa-right-from-bracket"></i> Returned Keys</a>
+                <div class="nav-dropdown">
+                    <div class="nav-dropdown-toggle" style="font-size: .9rem;">
+                        <i class="fa-solid fa-key"></i> Key Management
+                        <i class="fa-solid fa-chevron-down ms-auto" style="margin-left: auto;"></i>
+                    </div>
+                    <div class="nav-dropdown-menu hidden">
+                        <a href="#" class="nav-item" data-target="admin-key-reports"><i
+                                class="fa-solid fa-bolt"></i>&nbsp;
+                            Emergency Transfer</a>
+                        <a href="#" class="nav-item" data-target="admin-permanent-key-transfer"><i
+                                class="fa-solid fa-key"></i>&nbsp;
+                            Permanent Transfer</a>
+                        <a href="#" class="nav-item" data-target="admin-transfer-history"><i
+                                class="fa-solid fa-clock-rotate-left"></i>&nbsp; Transfer History</a>
+                        <a href="#" class="nav-item" data-target="admin-key-holdings"><i
+                                class="fa-solid fa-users-viewfinder"></i>&nbsp; Key Holdings</a>
+                        <a href="#" class="nav-item" data-target="admin-returned-keys"><i
+                                class="fa-solid fa-right-from-bracket"></i>&nbsp; Returned Keys</a>
+                    </div>
+                </div>
                 <a href="#" class="nav-item" data-target="admin-backdate-approval"><i
-                        class="fa-solid fa-calendar-check"></i> Backdate Approval</a>
+                        class="fa-solid fa-calendar-check"></i>&nbsp; Backdate Approval</a>
                 <a href="#" class="nav-item" data-target="admin-audit-trail">
                     <i class="fa-solid fa-list-check"></i>
-                    <span>System Logs</span>
+                    <span>&nbsp; System Logs</span>
                 </a>
             </div>
             <!--user1 navigation-->
             <div id="nav-user1" class="nav-links hidden">
                 <a href="#" class="nav-item active" data-target="user1-entry"><i class="fa-solid fa-pen-to-square"></i>
-                    Daily Entry</a>
-                <a href="#" class="nav-item" data-target="branch-key-transfer"><i class="fa-solid fa-key"></i> Key
-                    Transfer</a>
+                    &nbsp; Daily Entry</a>
+                <a href="#" class="nav-item" data-target="branch-key-transfer"><i class="fa-solid fa-key"></i>&nbsp;
+                    Key Transfer</a>
                 <a href="#" class="nav-item" data-target="user1-key-history"><i
-                        class="fa-solid fa-clock-rotate-left"></i> Key Transfer History</a>
+                        class="fa-solid fa-clock-rotate-left"></i>&nbsp; Key Transfer History</a>
                 <a href="#" class="nav-item" data-target="user1-reports"><i class="fa-solid fa-file-invoice"></i>
-                    Reports</a>
+                    &nbsp; Reports</a>
                 <a href="#" class="nav-item" data-target="user-profile"><i class="fa-solid fa-user"></i> My Profile</a>
             </div>
             <!--user2 navigation-->
             <div id="nav-user2" class="nav-links hidden">
-                <a href="#" class="nav-item active" data-target="user2-verify"><i class="fa-solid fa-check-double"></i>
+                <a href="#" class="nav-item active" data-target="user2-verify"><i
+                        class="fa-solid fa-check-double"></i>&nbsp;
                     Verifications</a>
-                <a href="#" class="nav-item" data-target="branch-key-transfer"><i class="fa-solid fa-key"></i> Key
+                <a href="#" class="nav-item" data-target="branch-key-transfer"><i class="fa-solid fa-key"></i>&nbsp; Key
                     Transfer</a>
                 <a href="#" class="nav-item" data-target="user2-key-history"><i
-                        class="fa-solid fa-clock-rotate-left"></i> Key Transfer History</a>
+                        class="fa-solid fa-clock-rotate-left"></i>&nbsp; Key Transfer History</a>
                 <a href="#" class="nav-item" data-target="user2-reports"><i class="fa-solid fa-file-invoice"></i>
-                    Reports</a>
+                    &nbsp; Reports</a>
                 <a href="#" class="nav-item" data-target="user-profile"><i class="fa-solid fa-user"></i> My Profile</a>
             </div>
 
             <div id="nav-reserve" class="nav-links hidden">
                 <a href="#" class="nav-item active" data-target="reserve-overview"><i class="fa-solid fa-house"></i>
-                    Home</a>
-                <a href="#" class="nav-item" data-target="branch-key-transfer"><i class="fa-solid fa-key"></i> Key
-                    Transfer</a>
+                    &nbsp; Home</a>
+                <a href="#" class="nav-item" data-target="branch-key-transfer"><i class="fa-solid fa-key"></i>&nbsp;
+                    Key Transfer</a>
                 <a href="#" class="nav-item" data-target="reserve-key-history"><i
-                        class="fa-solid fa-clock-rotate-left"></i> Key Transfer History</a>
+                        class="fa-solid fa-clock-rotate-left"></i>&nbsp; Key Transfer History</a>
                 <a href="#" class="nav-item" data-target="user-profile"><i class="fa-solid fa-user"></i> My Profile</a>
             </div>
 
@@ -290,6 +301,7 @@
 
         <main class="content-area">
             <!-- ADMIN VIEWS -->
+            <!---overview-->
             <div id="admin-overview" class="view-section hidden">
                 <div class="content-container">
                     <header>
@@ -316,7 +328,8 @@
                             <h4>Recent Declarations (ART LEASING)</h4>
                             <div class="table-responsive">
                                 <table id="table-declarations-art">
-                                    <thead>
+                                    <thead
+                                        style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                         <tr>
                                             <th>Date</th>
                                             <th>Branch</th>
@@ -324,11 +337,11 @@
                                             <th>Checker</th>
                                             <th>Stock IN</th>
                                             <th>Stock OUT</th>
-                                            <th>Cash Total</th>
+                                            <th>Cash</th>
                                             <th>Appraised</th>
                                             <th>Not Appraised</th>
                                             <th>Total Stock</th>
-                                            <th>Outstanding Loan</th>
+                                            <th>Outstanding</th>
                                             <th>Status</th>
                                         </tr>
                                     </thead>
@@ -348,7 +361,8 @@
                             <h4>Recent Declarations (CHEGANNUR NIDHI)</h4>
                             <div class="table-responsive">
                                 <table id="table-declarations-nidhi">
-                                    <thead>
+                                    <thead
+                                        style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                         <tr>
                                             <th>Date</th>
                                             <th>Branch</th>
@@ -356,13 +370,12 @@
                                             <th>Checker</th>
                                             <th>Stock IN</th>
                                             <th>Stock OUT</th>
-                                            <th>Cash Total</th>
+                                            <th>Cash</th>
                                             <th>Appraised</th>
                                             <th>Not Appraised</th>
                                             <th>Total Stock</th>
-                                            <th>Outstanding Loan</th>
+                                            <th>Outstanding</th>
                                             <th>Status</th>
-                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
@@ -373,6 +386,7 @@
                 </div>
             </div>
 
+            <!---branches-->
             <div id="admin-branches" class="view-section hidden">
                 <div class="content-container">
                     <header>
@@ -385,7 +399,7 @@
                         <div class="mt-2"
                             style="display: flex; gap: 15px; justify-content: space-between; align-items: flex-end; flex-wrap: wrap;">
                             <div class="input-group" style="margin-bottom: 0; min-width: 160px;">
-                                <label for="branch-filter-company">Filter by Company</label>
+                                <label for="branch-filter-company">Company</label>
                                 <select id="branch-filter-company" style="width: 15vw;">
                                     <option value="all">All Companies</option>
                                     <option value="ART LEASING">ART LEASING</option>
@@ -395,34 +409,35 @@
                             <div>
                                 <button type="button" class="btn btn-primary"
                                     onclick="document.getElementById('modal-add-branch').classList.remove('hidden')"><i
-                                        class="fa-solid fa-plus"></i> Add New Branch</button> 
-                                    </div>
-                                </div>                    
-                    <div style="margin-top: 18px;">
-                        <div class="table-responsive">
-                            <table id="table-branches">
-                                <thead >
-                                    <tr style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
-                                        <th>Branch</th>
-                                        <th>Company</th>
-                                        <th>Locker #</th>
-                                        <th>Key 1</th>
-                                        <th>Key 2</th>
-                                        <!--
+                                        class="fa-solid fa-plus"></i>New Branch</button>
+                            </div>
+                        </div>
+                        <div style="margin-top: 18px;">
+                            <div class="table-responsive">
+                                <table id="table-branches">
+                                    <thead
+                                        style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
+                                        <tr>
+                                            <th>Branch</th>
+                                            <th>Company</th>
+                                            <th>Locker #</th>
+                                            <th>Key 1</th>
+                                            <th>Key 2</th>
+                                            <!--
                                         <th>Total Stock</th>
                                         <th>Cash (₹)</th>
                                         <th>Outstanding(₹)</th>
                                     -->
-                                        <th>Added On</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
+                                            <th>Added On</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
             </div>
             <!----Manage Users-------------->
             <div id="admin-users" class="view-section hidden">
@@ -439,55 +454,57 @@
                             style="display: flex; gap: 15px; justify-content: space-between; align-items: flex-end; flex-wrap: wrap;">
                             <div class="input-group" style="margin-bottom: 0; min-width: 160px;">
                                 <label for="user-branch-filter-company">Search User</label>
-                                <input type="search" auto-complete="off" id="user-branch-filter-search" placeholder="Username..." style="width: 20vw;">
+                                <input type="search" auto-complete="off" id="user-branch-filter-search"
+                                    placeholder="Username..." style="width: 20vw;">
                             </div>
                             <div style="display: flex; gap: 10px;">
-                                <button id="btn-toggle-users" class="btn btn-primary"
-                                    onclick="toggleResignedUsers()">
+                                <button id="btn-toggle-users" class="btn btn-primary" onclick="toggleResignedUsers()">
                                     <i class="fa-solid fa-user-slash"></i> <span>View Resigned Users</span>
                                 </button>
                                 <button class="btn btn-primary"
                                     onclick="document.getElementById('modal-add-user').classList.remove('hidden')">
-                                    <i class="fa-solid fa-user-plus"></i> Register User
+                                    <i class="fa-solid fa-user-plus"></i> New User
                                 </button>
                             </div>
-                    </div>                  
-                        <div style="margin-top: 18px;">
-                        <div class="table-responsive" id="active-users-container">
-                            <table id="table-users" class="user_table">
-                                <thead>
-                                    <tr style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
-                                        <th>Name</th>
-                                        <th>Locker #</th>
-                                        <th>Assigned Key</th>
-                                        <th>Email</th>
-                                        <th>Role</th>
-                                        <th>Branch</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
                         </div>
-                        <div class="table-responsive hidden" id="resigned-users-container">
-                            <table id="table-resigned-users">
-                                <thead>
-                                    <tr style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th>Prev. Role</th>
-                                        <th>Branch</th>
-                                        <th>Resigned On</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
+                        <div style="margin-top: 18px;">
+                            <div class="table-responsive" id="active-users-container">
+                                <table id="table-users" class="user_table">
+                                    <thead
+                                        style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Branch</th>
+                                            <th>Assigned Key</th>
+                                            <th>Role</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                            <div class="table-responsive hidden" id="resigned-users-container">
+                                <table id="table-resigned-users">
+                                    <thead
+                                        style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
+                                        <tr
+                                            style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Prev. Role</th>
+                                            <th>Branch</th>
+                                            <th>Resigned On</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
             </div>
             <!----backdate approval---->
             <div id="admin-backdate-approval" class="view-section hidden">
@@ -517,10 +534,11 @@
                             <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check-circle"></i> Grant
                                 Approval</button>
                         </div>
-                    </form> 
+                    </form>
                     <div class="table-responsive">
                         <table id="table-backdate-approvals">
-                            <thead>
+                            <thead
+                                style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                 <tr>
                                     <th>Branch</th>
                                     <th>Approved Date</th>
@@ -564,13 +582,7 @@
                                     style="font-size: 0.6em; background: rgba(255,255,255,0.1); color: var(--gold); border: 1px solid var(--gold); padding: 6px 16px; border-radius: 20px;"></span>
                             </h3>
                             <p style="font-size: 15px;" class="text-muted">Enter locker transactions for today.</p>
-                            <div class="branch-stats-bar mt-1"
-                                style="display: flex; gap: 20px; font-size: 0.85em; opacity: 0.8;">
-                                <span><i class="fa-solid fa-cubes"></i> Stock: <strong
-                                        id="u1-total-stock">0</strong></span>
-                                <span><i class="fa-solid fa-money-bill-trend-up"></i> Loan: <strong
-                                        id="u1-total-loan">₹0</strong></span>
-                            </div>
+
                             <div id="u1-backdate-banner" class="mt-2 glass-panel hidden"
                                 style="padding: 10px 15px; border-left: 4px solid var(--gold); background: rgba(251, 191, 36, 0.1);">
                                 <i class="fa-solid fa-triangle-exclamation text-warning"></i>
@@ -588,7 +600,8 @@
                             <form id="form-stock-in">
                                 <div class="input-group">
                                     <label>Stock Number</label>
-                                    <input type="text" id="stock-in-number" required placeholder="e.g. GL-10293">
+                                    <input type="text" id="stock-in-number" required
+                                        placeholder="Total number of advance">
                                 </div>
                                 <button type="submit" class="btn btn-secondary full-width"
                                     style="background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid #10b981;">
@@ -602,7 +615,8 @@
                             <form id="form-stock-out">
                                 <div class="input-group">
                                     <label>Stock Number</label>
-                                    <input type="text" id="stock-out-number" required placeholder="e.g. GL-10293">
+                                    <input type="text" id="stock-out-number" required
+                                        placeholder="Total number of returned">
                                 </div>
                                 <button type="submit" class="btn btn-secondary full-width"
                                     style="background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid #ef4444;">
@@ -614,23 +628,22 @@
 
                     <div class="two-col-grid mt-4">
                         <div class="card glass-panel">
-                            <h3>Update Branch Totals</h3>
+                            <h3>Branch Outstanding</h3>
                             <form id="form-branch-totals">
                                 <div class="two-col-grid">
                                     <div class="input-group">
-                                        <label>Total Gold Loan Outstanding (₹)</label>
+                                        <label>Gold Loan Outstanding (₹)</label>
                                         <input type="number" id="loan-amount-input" required min="0"
-                                            placeholder="e.g. 150000">
+                                            placeholder="Outstanding loan amount">
                                     </div>
                                     <div class="input-group">
-                                        <label>Total Stock in Locker (Items)</label>
+                                        <label>Total Stock</label>
                                         <input type="number" id="stock-amount-input" required min="0"
-                                            placeholder="e.g. 215">
+                                            placeholder="Total stock">
                                     </div>
                                 </div>
                                 <button type="submit" class="btn btn-primary full-width"><i
-                                        class="fa-solid fa-upload"></i>
-                                    Update Totals</button>
+                                        class="fa-solid fa-upload"></i>Submit</button>
                             </form>
                         </div>
 
@@ -639,14 +652,14 @@
                             <form id="form-appraisals">
                                 <div class="two-col-grid">
                                     <div class="input-group">
-                                        <label>Total Packets Appraised</label>
+                                        <label>Appraised Packets</label>
                                         <input type="number" id="appraised-amount" required min="0"
-                                            placeholder="e.g. 15">
+                                            placeholder="Appraised Packets">
                                     </div>
                                     <div class="input-group">
-                                        <label>Total Not Appraised</label>
+                                        <label>Not Appraised</label>
                                         <input type="number" id="not-appraised-amount" required min="0"
-                                            placeholder="e.g. 2">
+                                            placeholder="Not Appraised">
                                     </div>
                                 </div>
                                 <button type="submit" class="btn btn-primary full-width"><i
@@ -661,31 +674,38 @@
                             <div class="compact-row-grid">
                                 <div class="input-group">
                                     <label>500 x</label>
-                                    <input type="number" id="cash-500" class="cash-input" min="0" placeholder="0">
+                                    <input type="number" id="cash-500" class="cash-input" min="0" placeholder="0"
+                                        required>
                                 </div>
                                 <div class="input-group">
                                     <label>200 x</label>
-                                    <input type="number" id="cash-200" class="cash-input" min="0" placeholder="0">
+                                    <input type="number" id="cash-200" class="cash-input" min="0" placeholder="0"
+                                        required>
                                 </div>
                                 <div class="input-group">
                                     <label>100 x</label>
-                                    <input type="number" id="cash-100" class="cash-input" min="0" placeholder="0">
+                                    <input type="number" id="cash-100" class="cash-input" min="0" placeholder="0"
+                                        required>
                                 </div>
                                 <div class="input-group">
                                     <label>50 x</label>
-                                    <input type="number" id="cash-50" class="cash-input" min="0" placeholder="0">
+                                    <input type="number" id="cash-50" class="cash-input" min="0" placeholder="0"
+                                        required>
                                 </div>
                                 <div class="input-group">
                                     <label>20 x</label>
-                                    <input type="number" id="cash-20" class="cash-input" min="0" placeholder="0">
+                                    <input type="number" id="cash-20" class="cash-input" min="0" placeholder="0"
+                                        required>
                                 </div>
                                 <div class="input-group">
                                     <label>10 x</label>
-                                    <input type="number" id="cash-10" class="cash-input" min="0" placeholder="0">
+                                    <input type="number" id="cash-10" class="cash-input" min="0" placeholder="0"
+                                        required>
                                 </div>
                                 <div class="input-group">
                                     <label>Coins (₹)</label>
-                                    <input type="number" id="cash-coins" class="cash-input" min="0" placeholder="0">
+                                    <input type="number" id="cash-coins" class="cash-input" min="0" placeholder="0"
+                                        required>
                                 </div>
                             </div>
                             <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px;">
@@ -701,7 +721,8 @@
                         <h3>My Today's Entries (Pending)</h3>
                         <div class="table-responsive">
                             <table id="table-my-entries">
-                                <thead>
+                                <thead
+                                    style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                     <tr>
                                         <th>Time</th>
                                         <th>Type</th>
@@ -728,14 +749,14 @@
                         <div class="two-col-grid mt-2">
                             <div class="input-group">
                                 <label>Key Number 1</label>
-                                <input type="text" id="u1-key-1" placeholder="Enter Key Number 1">
+                                <input type="text" id="u1-key-1" placeholder="Enter Key Number 1" required>
                             </div>
                             <div class="input-group">
                                 <label>Key Number 2 (Optional)</label>
                                 <input type="text" id="u1-key-2" placeholder="Enter Key Number 2">
                             </div>
                         </div>
-                        <button id="btn-u1-declare" class="btn btn-primary btn-lg mt-2">Sign Declaration</button>
+                        <button id="btn-u1-declare" class="btn btn-primary btn-lg mt-2"> Sign Declaration</button>
                         <p id="u1-declare-status" class="status-text mt-2"></p>
                     </div>
                 </div>
@@ -748,18 +769,12 @@
                             <h3 style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                                 Verifications
                                 <span id="u2-branch-name" class="badge"
-                                    style="font-size: 0.6em; background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; padding: 6px 16px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.2);"></span>
+                                    style="font-size: 0.6em; background: linear-gradient(135deg, #6f38ee, #5f0fdf); color: white; padding: 6px 16px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.2);"></span>
                                 <span id="u2-active-date" class="badge"
                                     style="font-size: 0.6em; background: rgba(255,255,255,0.1); color: var(--gold); border: 1px solid var(--gold); padding: 6px 16px; border-radius: 20px;"></span>
                             </h3>
                             <p style="font-size: 15px;" class="text-muted">Review and approve pending entries.</p>
-                            <div class="branch-stats-bar mt-1"
-                                style="display: flex; gap: 20px; font-size: 0.85em; opacity: 0.8;">
-                                <span><i class="fa-solid fa-cubes"></i> Stock: <strong
-                                        id="u2-total-stock">0</strong></span>
-                                <span><i class="fa-solid fa-money-bill-trend-up"></i> Loan: <strong
-                                        id="u2-total-loan">₹0</strong></span>
-                            </div>
+
                             <div id="u2-backdate-banner" class="mt-2 glass-panel hidden"
                                 style="padding: 10px 15px; border-left: 4px solid var(--gold); background: rgba(251, 191, 36, 0.1);">
                                 <i class="fa-solid fa-triangle-exclamation text-warning"></i>
@@ -776,7 +791,8 @@
                             <h3><i class="fa-solid fa-arrow-right-to-bracket text-success"></i> Pending Gold IN</h3>
                             <div class="table-responsive">
                                 <table id="table-pending-stock-in">
-                                    <thead>
+                                    <thead
+                                        style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                         <tr>
                                             <th>Stock #</th>
                                             <th>Action</th>
@@ -791,7 +807,8 @@
                             <h3><i class="fa-solid fa-arrow-right-from-bracket text-danger"></i> Pending Gold OUT</h3>
                             <div class="table-responsive">
                                 <table id="table-pending-stock-out">
-                                    <thead>
+                                    <thead
+                                        style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                         <tr>
                                             <th>Stock #</th>
                                             <th>Action</th>
@@ -807,7 +824,8 @@
                         <h3>Pending Cash Entries</h3>
                         <div class="table-responsive">
                             <table id="table-pending-cash">
-                                <thead>
+                                <thead
+                                    style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                     <tr>
                                         <th>Amount (₹)</th>
                                         <th>Denominations</th>
@@ -823,7 +841,8 @@
                         <h3>Pending Appraisal Entries</h3>
                         <div class="table-responsive">
                             <table id="table-pending-appraisals">
-                                <thead>
+                                <thead
+                                    style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                     <tr>
                                         <th>Appraised</th>
                                         <th>Not Appraised</th>
@@ -870,9 +889,9 @@
                     </div>
                 </header>
 
-                <div class="two-col-grid">
+                <div class="key-transfer-grid">
                     <!-- LEFT COLUMN: BLOCKED BANNER OR INITIATE FORM -->
-                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
                         <div id="key-transfer-blocked" class="card glass-panel hidden"
                             style="border-left: 4px solid #ef4444; background: rgba(239, 68, 68, 0.05); margin-top: 0; margin-bottom: 0;">
                             <h3 class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> Action Blocked</h3>
@@ -905,11 +924,11 @@
                                 <div class="input-group">
                                     <label>Transfer Type</label>
                                     <select id="key-transfer-type" required>
-                                      <!-- <option value="permanent">Permanent</option>--> 
-                                       <option value="" disabled selected>select transfer type</option>
-                                       <option value="temporary">Temporary</option>
+                                        <!-- <option value="permanent">Permanent</option>-->
+                                        <option value="" disabled selected>select transfer type</option>
+                                        <option value="temporary">Temporary</option>
                                         <option value="resignation">Resignation (Return to Admin)</option>
-                                        
+
                                     </select>
                                 </div>
                                 <div class="two-col-grid hidden" id="temp-key-dates">
@@ -935,11 +954,12 @@
 
                     <!-- RIGHT COLUMN: PENDING INCOMING AND ACTIVE KEYS (ALWAYS VISIBLE) -->
                     <div style="display: flex; flex-direction: column; gap: 20px;">
-                        <div class="card glass-panel" style="margin-top: 0; margin-bottom: 0;">
+                        <div class="card glass-panel" style="margin-top: 0; margin-bottom: 0; width: 100%;">
                             <h3><i class="fa-solid fa-inbox text-success"></i> Pending Incoming Requests</h3>
                             <div class="table-responsive">
                                 <table id="table-incoming-keys">
-                                    <thead>
+                                    <thead
+                                        style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                         <tr>
                                             <th>Date & Time</th>
                                             <th>From User</th>
@@ -958,7 +978,8 @@
                             <h3><i class="fa-solid fa-key text-warning"></i> My Active Temporary Keys</h3>
                             <div class="table-responsive">
                                 <table id="table-active-keys">
-                                    <thead>
+                                    <thead
+                                        style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                         <tr>
                                             <th>Date Accepted</th>
                                             <th>From</th>
@@ -986,7 +1007,7 @@
                 <div class="card glass-panel">
                     <div class="table-responsive">
                         <table id="table-key-history-user1">
-                            <thead>
+                            <thead style="color: rgb(0, 0, 0); position: sticky; top: 0; z-index: 1; background: #fff;">
                                 <tr>
                                     <th>Request Date</th>
                                     <th>Direction</th>
@@ -1015,7 +1036,7 @@
                 <div class="card glass-panel">
                     <div class="table-responsive">
                         <table id="table-key-history-user2">
-                            <thead>
+                            <thead style="color: rgb(0, 0, 0); position: sticky; top: 0; z-index: 1; background: #fff;">
                                 <tr>
                                     <th>Request Date</th>
                                     <th>Direction</th>
@@ -1044,7 +1065,8 @@
                 <div class="card glass-panel">
                     <div class="table-responsive">
                         <table id="table-key-history-reserve">
-                            <thead>
+                            <thead
+                                style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                 <tr>
                                     <th>Request Date</th>
                                     <th>Direction</th>
@@ -1113,7 +1135,7 @@
                         </div>
                     </header>
                     <div class="card glass-panel mb-4">
-                       
+
                         <form id="form-admin-filter-reports" class="mt-2"
                             style="display: flex; gap:8px; flex-wrap: wrap; align-items: center;">
                             <div class="input-group">
@@ -1129,24 +1151,26 @@
                                 <select id="admin-filter-branch">
                                     <option value="all">All Branches</option>
                                 </select>
-                            </div>                          
-                                <div class="input-group">
-                                    <label for="admin-filter-from">From Date</label>
-                                    <input type="date" id="admin-filter-from">
-                                </div>
-                                <div class="input-group">
-                                    <label for="admin-filter-to">To Date</label>
-                                    <input type="date" id="admin-filter-to">
-                                </div>                            
-                            <div class="form-actions" style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
-                                <button type="submit" class="btn btn-primary"style="height: 38px; display: flex; align-items: center;"><i
+                            </div>
+                            <div class="input-group">
+                                <label for="admin-filter-from">From Date</label>
+                                <input type="date" id="admin-filter-from">
+                            </div>
+                            <div class="input-group">
+                                <label for="admin-filter-to">To Date</label>
+                                <input type="date" id="admin-filter-to">
+                            </div>
+                            <div class="form-actions"
+                                style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
+                                <button type="submit" class="btn btn-primary"
+                                    style="height: 38px; display: flex; align-items: center;"><i
                                         class="fa-solid fa-check"></i> Apply</button>
                                 <button type="button" id="btn-admin-filter-clear" class="btn btn-secondary"
                                     style="height: 38px; display: flex; align-items: center;">Clear</button>
                             </div>
-                            
-                
-                        </form> 
+
+
+                        </form>
                         <div class="report-print-header">
                             <div>
                                 <p class="report-kicker">Gold Vault</p>
@@ -1160,8 +1184,9 @@
                         </div>
                         <div class="table-responsive" style="margin-top: 20px;">
                             <table id="table-admin-reports" class="admin-report">
-                                <thead>
-                                    <tr style="background: #ffff; color: rgb(0, 0, 0); position: sticky; top: 0; z-index: 1; backdrop-filter: blur(4px);">
+                                <thead
+                                    style="color: rgb(0, 0, 0); position: sticky; top: 0; z-index: 1; background: #fff;">
+                                    <tr>
                                         <th>Date</th>
                                         <th>Branch</th>
                                         <th>Maker</th>
@@ -1266,7 +1291,8 @@
                     <header>
                         <div>
                             <h3>Permanent Key Transfer</h3>
-                            <p style="font-size: 15px;" class="text-muted">Initiate permanent key transfers between any branches.</p>
+                            <p style="font-size: 15px;" class="text-muted">Initiate permanent key transfers between any
+                                branches.</p>
                         </div>
                     </header>
 
@@ -1338,15 +1364,15 @@
                     </header>
                     <div class="card glass-panel report-shell">
                         <form id="form-admin-filter-transfer-history" class="grid-form mb-4"
-                            style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; background: rgba(255, 255, 255, 0.5); padding: 15px; border-radius: 8px;">
+                            style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; padding: 15px; border-radius: 8px;">
 
-                            <div class="input-group" style="flex: 1.5; min-width: 200px; margin-bottom: 0;">
+                            <div class="input-group" style=" min-width: 200px; margin-bottom: 0;">
                                 <label style="margin-bottom: 4px;">Branch Filter</label>
                                 <select id="admin-filter-transfer-branch" style="width: 100%;">
                                     <option value="all">All Branches</option>
                                 </select>
                             </div>
-                            <div class="input-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                            <div class="input-group" style=" min-width: 150px; margin-bottom: 0;">
                                 <label style="margin-bottom: 4px;">Status</label>
                                 <select id="admin-filter-transfer-status" style="width: 100%;">
                                     <option value="all">All Statuses</option>
@@ -1355,23 +1381,23 @@
                                     <option value="returned">Returned</option>
                                 </select>
                             </div>
-                            <div class="input-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
-                                <label style="margin-bottom: 4px;">From Date</label>
+                            <div class="input-group" style="min-width: 150px; margin-bottom: 0;">
+                                <label style="margin-bottom: 4px;">From</label>
                                 <input type="date" id="admin-filter-transfer-from" style="width: 100%;">
                             </div>
-                            <div class="input-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
-                                <label style="margin-bottom: 4px;">To Date</label>
+                            <div class="input-group" style="min-width: 150px; margin-bottom: 0;">
+                                <label style="margin-bottom: 4px;">To</label>
                                 <input type="date" id="admin-filter-transfer-to" style="width: 100%;">
                             </div>
                             <div class="form-actions" style="margin-bottom: 0; padding-bottom: 2px;">
-                                <button type="submit" class="btn btn-primary" style="white-space: nowrap; height: 38px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                    <i class="fa-solid fa-filter"></i> Filter
-                                </button>
+                                <button type="submit" class="btn btn-primary"
+                                    style="white-space: nowrap; height: 38px; display: flex; align-items: center; justify-content: center; gap: 6px;">Apply</button>
                             </div>
                         </form>
                         <div class="table-responsive">
                             <table id="table-admin-key-reports">
-                                <thead>
+                                <thead
+                                    style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                     <tr>
                                         <th>Date Sent</th>
                                         <th>Accepted On</th>
@@ -1432,7 +1458,8 @@
 
                         <div class="table-responsive">
                             <table id="table-admin-key-holdings">
-                                <thead>
+                                <thead
+                                    style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                     <tr>
                                         <th>Branch Name</th>
                                         <th>Key 1 (Assigned To)</th>
@@ -1461,7 +1488,8 @@
                     <div class="card glass-panel">
                         <div class="table-responsive">
                             <table id="table-admin-returned-keys">
-                                <thead>
+                                <thead
+                                    style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                     <tr>
                                         <th>Date Sent</th>
                                         <th>From Branch</th>
@@ -1485,7 +1513,7 @@
                         <h3>Branch Reports</h3>
                         <p style="font-size: 15px;" class="text-muted">Historical daily declarations for your branch.
                         </p>
-                    </div>                    
+                    </div>
                 </header>
                 <div class="card glass-panel report-shell">
                     <div class="report-print-header">
@@ -1499,9 +1527,31 @@
                             <strong class="report-generated">-</strong>
                         </div>
                     </div>
-                    <div class="table-responsive">
+
+                    <div class="report-filters">
+                        <form id="form-user1-filter-reports"
+                            style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+                            <div class="input-group">
+                                <label for="user1-filter-from">From Date</label>
+                                <input type="date" id="user1-filter-from">
+                            </div>
+                            <div class="input-group">
+                                <label for="user1-filter-to">To Date</label>
+                                <input type="date" id="user1-filter-to">
+                            </div>
+                            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                <button type="submit" class="btn btn-primary"
+                                    style="height: 36px; display: flex; align-items: center;"><i
+                                        class="fa-solid fa-check"></i> Apply</button>
+                                <button type="button" id="btn-user1-filter-clear" class="btn btn-secondary"
+                                    style="height: 36px; display: flex; align-items: center;">Clear</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="table-responsive" style="margin-top: 10px;">
                         <table id="table-user1-reports">
-                            <thead>
+                            <thead style="color: rgb(0, 0, 0); position: sticky; top: 0; z-index: 1; background: #fff;">
                                 <tr>
                                     <th>Date</th>
                                     <th>Branch</th>
@@ -1509,11 +1559,11 @@
                                     <th>Checker</th>
                                     <th>Stock IN</th>
                                     <th>Stock OUT</th>
-                                    <th>Cash Total</th>
+                                    <th>Cash</th>
                                     <th>Appraised</th>
                                     <th>Not Appraised</th>
                                     <th>Total Stock</th>
-                                    <th>Outstanding Loan</th>
+                                    <th>Outstanding</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
@@ -1530,7 +1580,7 @@
                         <h3>Branch Reports</h3>
                         <p style="font-size: 15px;" class="text-muted">Historical daily declarations for your branch.
                         </p>
-                    </div>                    
+                    </div>
                 </header>
                 <div class="card glass-panel report-shell">
                     <div class="report-print-header">
@@ -1544,9 +1594,30 @@
                             <strong class="report-generated">-</strong>
                         </div>
                     </div>
-                    <div class="table-responsive">
+                    <div class="report-filters">
+                        <form id="form-user2-filter-reports"
+                            style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+                            <div class="input-group">
+                                <label for="user2-filter-from">From Date</label>
+                                <input type="date" id="user2-filter-from">
+                            </div>
+                            <div class="input-group">
+                                <label for="user2-filter-to">To Date</label>
+                                <input type="date" id="user2-filter-to">
+                            </div>
+                            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                <button type="submit" class="btn btn-primary"
+                                    style="height: 36px; display: flex; align-items: center;"><i
+                                        class="fa-solid fa-check"></i> Apply</button>
+                                <button type="button" id="btn-user2-filter-clear" class="btn btn-secondary"
+                                    style="height: 36px; display: flex; align-items: center;">Clear</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="table-responsive" style="margin-top: 10px;">
                         <table id="table-user2-reports">
-                            <thead>
+                            <thead style="color: rgb(0, 0, 0); position: sticky; top: 0; z-index: 1; background: #fff;">
                                 <tr>
                                     <th>Date</th>
                                     <th>Branch</th>
@@ -1678,7 +1749,8 @@
 
                         <div class="table-responsive">
                             <table id="table-audit-logs" class="data-table">
-                                <thead>
+                                <thead
+                                    style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
                                     <tr>
                                         <th>Timestamp</th>
                                         <th>User</th>
@@ -1708,19 +1780,19 @@
                             <h3><i class="fa-solid fa-id-card text-primary"></i> Account Details</h3>
                             <div style="margin-top: 15px; display: grid; gap: 15px;">
                                 <div>
-                                    <small class="text-muted">Full Name</small>
+                                    <small class="text-muted"><i class="fa-solid fa-user"></i> Full Name</small>
                                     <div id="profile-name" style="font-size: 1.1em; font-weight: 500;">-</div>
                                 </div>
                                 <div>
-                                    <small class="text-muted">Branch Name</small>
+                                    <small class="text-muted"><i class="fa-solid fa-building"></i> Branch Name</small>
                                     <div id="profile-branch" style="font-size: 1.1em; font-weight: 500;">-</div>
                                 </div>
                                 <div>
-                                    <small class="text-muted">Locker Number</small>
+                                    <small class="text-muted"><i class="fa-solid fa-box"></i> Locker Number</small>
                                     <div id="profile-locker" style="font-size: 1.1em; font-weight: 500;">-</div>
                                 </div>
                                 <div>
-                                    <small class="text-muted">Assigned Key(s)</small>
+                                    <small class="text-muted"><i class="fa-solid fa-key"></i> Assigned Key(s)</small>
                                     <div id="profile-key" style="font-size: 1.1em; font-weight: 500;">-</div>
                                 </div>
                             </div>
@@ -1759,13 +1831,13 @@
     <script src="admin.js?v=4"></script>
     <script src="branch.js?v=4"></script>
     <script>
-  document.addEventListener("DOMContentLoaded", function() {
-    const inputs = document.querySelectorAll('input');
-    inputs.forEach(input => {
-      input.setAttribute('autocomplete', 'off');
-    });
-  });
-</script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.setAttribute('autocomplete', 'off');
+            });
+        });
+    </script>
 </body>
 
 </html>
