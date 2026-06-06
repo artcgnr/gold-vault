@@ -181,6 +181,7 @@ async function loadBranches() {
 
         window.branchDataCache = {};
         window.assignedKeys = new Set();
+        window.branchAssignedRoles = {};
 
         usersSnapshot.forEach(doc => {
             const userData = doc.data();
@@ -189,6 +190,17 @@ async function loadBranches() {
             }
             if (userData.key2) {
                 window.assignedKeys.add(userData.key2);
+            }
+
+            if (!userData.is_resigned && userData.branch_id) {
+                if (!window.branchAssignedRoles[userData.branch_id]) {
+                    window.branchAssignedRoles[userData.branch_id] = { user1: null, user2: null };
+                }
+                if (userData.role === 'user1' || userData.role === 'user1and1') {
+                    window.branchAssignedRoles[userData.branch_id].user1 = doc.id;
+                } else if (userData.role === 'user2') {
+                    window.branchAssignedRoles[userData.branch_id].user2 = doc.id;
+                }
             }
         });
 
@@ -233,6 +245,14 @@ async function loadBranches() {
                 return;
             }
 
+            let deleteBtnHtml = '';
+            if (window.currentUserData && window.currentUserData.role === 'admin') {
+                deleteBtnHtml = `
+                    <button class="btn btn-secondary btn-sm" style="color: #ef4444; margin-left: 5px;" onclick="deleteBranch('${docSnap.id}', '${escapeHtml(data.name)}')" title="Delete branch">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>`;
+            }
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><strong>${data.name}</strong></td>
@@ -246,6 +266,7 @@ async function loadBranches() {
                     <button class="btn btn-secondary btn-sm" onclick="openEditBranch('${docSnap.id}', '${escapeHtml(data.name)}', '${escapeHtml(data.company || '')}', ${data.total_stock}, ${data.physical_cash}, ${data.outstanding_loan || 0}, '${escapeHtml(data.locker_number || '')}', '${escapeHtml(data.key1 || '')}', '${escapeHtml(data.key2 || '')}')"title="Edit branch">
                         <i class="fa-solid fa-pen-to-square"></i>
                     </button>
+                    ${deleteBtnHtml}
                 </td>
             `;
             tbody.appendChild(tr);
@@ -284,11 +305,57 @@ function updateUserFormLockerKey(branchId, lockerSelectId, keySelectId, currentU
     // No longer disabling if empty, as "None / Remove Key" is always an option
 }
 
+function updateUserFormRoles(branchId, roleSelectId, currentUserId = null) {
+    const roleSelect = document.getElementById(roleSelectId);
+    if (!roleSelect) return;
+    
+    const isHr = window.currentUserData && window.currentUserData.role === 'hr';
+
+    Array.from(roleSelect.options).forEach(opt => {
+        if (!opt.value) return;
+        if (isHr && !['user', 'user1', 'user2'].includes(opt.value)) {
+            opt.disabled = true;
+            opt.style.display = 'none';
+        } else {
+            opt.disabled = false;
+            opt.style.display = '';
+        }
+    });
+
+    if (!branchId || !window.branchAssignedRoles || !window.branchAssignedRoles[branchId]) return;
+
+    const assigned = window.branchAssignedRoles[branchId];
+
+    if (assigned.user1 && assigned.user1 !== currentUserId) {
+        Array.from(roleSelect.options).forEach(opt => {
+            if (opt.value === 'user1' || opt.value === 'user1and1') {
+                opt.disabled = true;
+                opt.style.display = 'none';
+            }
+        });
+    }
+
+    if (assigned.user2 && assigned.user2 !== currentUserId) {
+        Array.from(roleSelect.options).forEach(opt => {
+            if (opt.value === 'user2') {
+                opt.disabled = true;
+                opt.style.display = 'none';
+            }
+        });
+    }
+    
+    // Automatically reset value if the currently selected option is now disabled
+    if (roleSelect.options[roleSelect.selectedIndex] && roleSelect.options[roleSelect.selectedIndex].disabled) {
+        roleSelect.value = 'user';
+    }
+}
+
 // Add event listeners for branch select in new user form
 const newUserBranch = document.getElementById('new-user-branch');
 if (newUserBranch) {
     newUserBranch.addEventListener('change', (e) => {
         updateUserFormLockerKey(e.target.value, 'new-user-locker', 'new-user-key');
+        updateUserFormRoles(e.target.value, 'new-user-role');
     });
 }
 
@@ -297,6 +364,7 @@ const editUserBranch = document.getElementById('edit-user-branch');
 if (editUserBranch) {
     editUserBranch.addEventListener('change', (e) => {
         updateUserFormLockerKey(e.target.value, 'edit-user-locker', 'edit-user-key', window.currentEditingUserId);
+        updateUserFormRoles(e.target.value, 'edit-user-role', window.currentEditingUserId);
     });
 }
 
@@ -316,6 +384,28 @@ document.getElementById('form-add-user').addEventListener('submit', async (e) =>
 
     window.showLoader();
     try {
+        if (branchId && (role === 'user1' || role === 'user1and1' || role === 'user2')) {
+            const branchUsersSnap = await window.db.collection('users').where('branch_id', '==', branchId).get();
+            let existingUser = null;
+            branchUsersSnap.forEach(doc => {
+                const data = doc.data();
+                if (data.is_resigned) return;
+                
+                if ((role === 'user1' || role === 'user1and1') && (data.role === 'user1' || data.role === 'user1and1')) {
+                    existingUser = data.name || 'Another user';
+                }
+                if (role === 'user2' && data.role === 'user2') {
+                    existingUser = data.name || 'Another user';
+                }
+            });
+
+            if (existingUser) {
+                let roleName = role === 'user2' ? 'User 2 (Checker)' : 'User 1 (Maker)';
+                window.hideLoader();
+                return window.showToast(`Cannot assign role! ${existingUser} is already assigned as ${roleName} in this branch. Please assign as Reserve User.`, "error");
+            }
+        }
+
         const secondaryApp = firebase.initializeApp(window.firebaseConfig, "SecondaryApp" + Date.now());
         const userCredential = await secondaryApp.auth().createUserWithEmailAndPassword(email, password);
         const newUserUid = userCredential.user.uid;
@@ -449,6 +539,14 @@ function displayUsers(usersToDisplay) {
         const safeKey2 = (data.key2 || '').replace(/'/g, "\\'");
         const safeEmail = (data.email || '').replace(/'/g, "\\'");
 
+        let deleteBtnHtml = '';
+        if (window.currentUserData && window.currentUserData.role === 'admin') {
+            deleteBtnHtml = `
+                <button class="btn btn-secondary btn-sm" style="color: #ef4444; margin-left: 5px;" onclick="deleteUser('${docSnap.id}', '${safeName}')" title="Delete User">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>`;
+        }
+
         tr.innerHTML = `
             <td><strong>${escapeHtml(data.name)}</strong></td>
             <td>${escapeHtml(data.email)}</td>
@@ -460,6 +558,7 @@ function displayUsers(usersToDisplay) {
                 <button class="btn btn-secondary btn-sm" onclick="openEditUser('${docSnap.id}', '${safeName}', '${safeRole}', '${safeBranch}', '${safeKey1}', '${safeKey2}', false, '${safeEmail}')" title="Edit User">
                     <i class="fa-solid fa-pen-to-square"></i>
                 </button>               
+                ${deleteBtnHtml}
             </td>
         `;
         tbody.appendChild(tr);
@@ -475,7 +574,10 @@ function filterUsers(searchText) {
     const filtered = window.allUsersData.filter(({ data }) => {
         const name = (data.name || '').toLowerCase();
         const email = (data.email || '').toLowerCase();
-        return name.includes(searchText) || email.includes(searchText);
+        const branchName = data.branch_id && window.branchDataCache && window.branchDataCache[data.branch_id] 
+            ? (window.branchDataCache[data.branch_id].name || '').toLowerCase() 
+            : '';
+        return name.includes(searchText) || email.includes(searchText) || branchName.includes(searchText);
     });
 
     displayUsers(filtered);
@@ -501,6 +603,32 @@ window.resetUserPassword = async (email) => {
     window.hideLoader();
 };
 
+window.openAddUserModal = () => {
+    const roleSelect = document.getElementById('new-user-role');
+    const isHr = window.currentUserData && window.currentUserData.role === 'hr';
+    
+    if (roleSelect) {
+        Array.from(roleSelect.options).forEach(opt => {
+            if (!opt.value) return; 
+            if (isHr) {
+                if (['user', 'user1', 'user2'].includes(opt.value)) {
+                    opt.style.display = '';
+                    opt.disabled = false;
+                } else {
+                    opt.style.display = 'none';
+                    opt.disabled = true;
+                }
+            } else {
+                opt.style.display = '';
+                opt.disabled = false;
+            }
+        });
+        roleSelect.value = "";
+    }
+
+    document.getElementById('modal-add-user').classList.remove('hidden');
+};
+
 window.openEditUser = (id, name, role, branchId, key1, key2, isResigned = false, email = '') => {
     window.currentEditingUserId = id;
     window.currentEditingUserKey = key1;
@@ -510,6 +638,27 @@ window.openEditUser = (id, name, role, branchId, key1, key2, isResigned = false,
     document.getElementById('edit-user-name').value = name;
     const emailInput = document.getElementById('edit-user-email');
     if (emailInput) emailInput.value = email;
+    
+    const roleSelect = document.getElementById('edit-user-role');
+    const isHr = window.currentUserData && window.currentUserData.role === 'hr';
+    if (roleSelect) {
+        Array.from(roleSelect.options).forEach(opt => {
+            if (!opt.value) return; 
+            if (isHr) {
+                if (['user', 'user1', 'user2'].includes(opt.value)) {
+                    opt.style.display = '';
+                    opt.disabled = false;
+                } else {
+                    opt.style.display = 'none';
+                    opt.disabled = true;
+                }
+            } else {
+                opt.style.display = '';
+                opt.disabled = false;
+            }
+        });
+    }
+    
     document.getElementById('edit-user-role').value = role;
     document.getElementById('edit-user-status').value = isResigned ? 'resigned' : 'active';
     const pwdInput = document.getElementById('edit-user-password');
@@ -522,6 +671,7 @@ window.openEditUser = (id, name, role, branchId, key1, key2, isResigned = false,
 
     if (branchId) {
         updateUserFormLockerKey(branchId, 'edit-user-locker', 'edit-user-key', id);
+        updateUserFormRoles(branchId, 'edit-user-role', id);
         const editLocker = document.getElementById('edit-user-locker');
         const editKey = document.getElementById('edit-user-key');
         if (editLocker && window.branchDataCache && window.branchDataCache[branchId]) {
@@ -564,6 +714,30 @@ document.getElementById('form-edit-user').addEventListener('submit', async (e) =
 
     window.showLoader();
     try {
+        if (!isResigned && branchId && (role === 'user1' || role === 'user1and1' || role === 'user2')) {
+            const branchUsersSnap = await window.db.collection('users').where('branch_id', '==', branchId).get();
+            let existingUser = null;
+            branchUsersSnap.forEach(doc => {
+                if (doc.id === id) return; // skip self
+                
+                const data = doc.data();
+                if (data.is_resigned) return;
+                
+                if ((role === 'user1' || role === 'user1and1') && (data.role === 'user1' || data.role === 'user1and1')) {
+                    existingUser = data.name || 'Another user';
+                }
+                if (role === 'user2' && data.role === 'user2') {
+                    existingUser = data.name || 'Another user';
+                }
+            });
+
+            if (existingUser) {
+                let roleName = role === 'user2' ? 'User 2 (Checker)' : 'User 1 (Maker)';
+                window.hideLoader();
+                return window.showToast(`Cannot assign role! ${existingUser} is already assigned as ${roleName} in this branch. Please assign as Reserve User.`, "error");
+            }
+        }
+
         const updates = {
             name: name,
             role: role,
@@ -676,48 +850,48 @@ async function loadStats(selectedDate = null) {
             let totalStock = 0;
             let totalCash = 0;
             let totalLoan = 0;
-
-            if (!declarationsSnap.empty) {
-                declarationsSnap.forEach(d => {
-                    const data = d.data();
-                    const branchData = branchSnap.docs.find(b => b.id === data.branch_id)?.data() || {};
-                    if (branchData.company !== companyName) return;
-
-                    let bStock = data.total_stock !== undefined ? data.total_stock : (branchData.total_stock || 0);
-                    let bLoan = data.outstanding_loan !== undefined ? data.outstanding_loan : (branchData.outstanding_loan || 0);
-
-                    const tDoc = totalsSnap.docs.find(t => t.data().branch_id === data.branch_id);
-                    if (tDoc) {
-                        const tData = tDoc.data();
-                        if (tData.total_stock !== undefined) bStock = tData.total_stock;
-                        if (tData.outstanding_loan !== undefined) bLoan = tData.outstanding_loan;
-                    }
-
-                    totalStock += bStock;
-                    totalLoan += bLoan;
-                    totalCash += branchData.physical_cash || 0;
-                });
-            } else {
-                activeBranches.forEach(b => {
-                    totalStock += b.data().total_stock || 0;
-                    totalCash += b.data().physical_cash || 0;
-                    totalLoan += b.data().outstanding_loan || 0;
-                });
-            }
-
             let targetAppraised = 0;
             let targetPending = 0;
 
-            appraisalSnap.forEach(doc => {
-                const data = doc.data();
-                const branchData = branchSnap.docs.find(b => b.id === data.branch_id)?.data();
-                if (!branchData || branchData.company !== companyName) return;
+            activeBranches.forEach(b => {
+                const branchData = b.data();
+                const branchId = b.id;
 
-                const txDate = data.timestamp ? data.timestamp.toDate().toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-                if (txDate === lastActiveDateStr && data.status === 'approved') {
-                    targetAppraised += data.appraised || 0;
-                    targetPending += data.not_appraised || 0;
+                let bStock = branchData.total_stock || 0;
+                let bLoan = branchData.outstanding_loan || 0;
+                let bCash = branchData.physical_cash || 0;
+
+                const dDoc = declarationsSnap.docs.find(d => d.data().branch_id === branchId);
+                if (dDoc) {
+                    const dData = dDoc.data();
+                    if (dData.total_stock !== undefined) bStock = dData.total_stock;
+                    if (dData.outstanding_loan !== undefined) bLoan = dData.outstanding_loan;
+                    if (dData.cash_total !== undefined) bCash = dData.cash_total;
+                    targetAppraised += dData.appraised || 0;
+                    targetPending += dData.not_appraised || 0;
+                } else {
+                    appraisalSnap.forEach(doc => {
+                        const data = doc.data();
+                        if (data.branch_id === branchId) {
+                            const txDate = data.timestamp ? data.timestamp.toDate().toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+                            if (txDate === lastActiveDateStr) {
+                                targetAppraised += data.appraised || 0;
+                                targetPending += data.not_appraised || 0;
+                            }
+                        }
+                    });
                 }
+
+                const tDoc = totalsSnap.docs.find(t => t.data().branch_id === branchId);
+                if (tDoc) {
+                    const tData = tDoc.data();
+                    if (tData.total_stock !== undefined) bStock = tData.total_stock;
+                    if (tData.outstanding_loan !== undefined) bLoan = tData.outstanding_loan;
+                }
+
+                totalStock += bStock;
+                totalLoan += bLoan;
+                totalCash += bCash;
             });
 
             return `
@@ -1293,11 +1467,10 @@ async function loadAdminKeyReports(filters = {}) {
                     (data.status === 'rejected' || data.status === 'deleted' ? '<span class="status-badge status-pending" style="color:red" title="Rejected"><i class="fa-solid fa-xmark"></i></span>' : '<span class="status-badge status-pending" title="Pending"><i class="fa-solid fa-spinner"></i></span>'));
 
             let actionHtml = '-';
-            if (data.status === 'returned') {
+            if (data.status === 'returned' || (data.transfer_type === 'permanent' && data.status === 'accepted')) {
                 if (data.print_taken) {
                     actionHtml = `<div style="display: flex; gap: 2px; flex-direction: row; justify-content: center;">
                                     <button class="btn btn-icon btn-sm text-primary" onclick="window.enableKeyTransferPrint('${docSnap.id}')" title="Enable Print"><i class="fa-solid fa-unlock"></i></button>
-                                    <button class="btn btn-icon btn-sm text-primary" onclick="window.printKeyTransferReceipt('${docSnap.id}')" title="Print"><i class="fa-solid fa-print"></i></button>
                                   </div>`;
                 } else {
                     actionHtml = `<div style="display: flex; gap: 2px; flex-direction: row; justify-content: center;">
@@ -1878,6 +2051,8 @@ setTimeout(() => {
             const keyNumber = document.getElementById('admin-pkt-number').value;
             const transferType = document.getElementById('admin-pkt-type').value;
             const reason = document.getElementById('admin-pkt-reason').value;
+            const auditorName = document.getElementById('admin-pkt-auditor').value;
+            const appraiserName = document.getElementById('admin-pkt-appraiser').value;
 
             const senderBranchId = document.getElementById('admin-pkt-sender-branch').value;
             const receiverBranchId = document.getElementById('admin-pkt-receiver-branch').value;
@@ -1896,6 +2071,8 @@ setTimeout(() => {
                     from_date: null,
                     to_date: null,
                     reason: reason,
+                    auditor_name: auditorName,
+                    appraiser_name: appraiserName,
                     status: 'pending',
                     created_at: firebase.firestore.FieldValue.serverTimestamp()
                 });
@@ -2201,3 +2378,268 @@ window.undoKeyTransfer = async (transferId, keyNumber, type) => {
     }
     window.hideLoader();
 };
+
+window.deleteBranch = async (branchId, branchName) => {
+    if (!confirm(`Are you sure you want to delete the branch "${branchName}"? This action cannot be undone.`)) return;
+    window.showLoader();
+    try {
+        await window.db.collection("branches").doc(branchId).delete();
+        window.showToast("Branch deleted successfully!", "success");
+        if (typeof window.logAuditEvent === 'function') {
+            window.logAuditEvent("Admin Branch Delete", "admin", `Deleted branch: ${branchName}`);
+        }
+        loadBranches();
+    } catch (err) {
+        window.showToast(err.message, "error");
+    }
+    window.hideLoader();
+};
+
+window.deleteUser = async (userId, userName) => {
+    if (!confirm(`Are you sure you want to delete the user "${userName}"? This action cannot be undone.`)) return;
+    window.showLoader();
+    try {
+        await window.db.collection("users").doc(userId).delete();
+        window.showToast("User deleted successfully!", "success");
+        if (typeof window.logAuditEvent === 'function') {
+            window.logAuditEvent("Admin User Delete", "admin", `Deleted user: ${userName}`);
+        }
+        loadUsers();
+        if (typeof loadResignedUsers === 'function') {
+            loadResignedUsers();
+        }
+    } catch (err) {
+        window.showToast(err.message, "error");
+    }
+    window.hideLoader();
+};
+
+// ==========================================
+// WEEKLY ANALYSIS (OUTSTANDING LOAN)
+// ==========================================
+
+const formWeeklyAnalysis = document.getElementById('form-admin-weekly-analysis');
+if (formWeeklyAnalysis) {
+    formWeeklyAnalysis.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const compareDate = document.getElementById('admin-wa-compare-date').value;
+        const baseDate = document.getElementById('admin-wa-base-date').value;
+        const companyFilter = document.getElementById('admin-wa-company').value;
+
+        if (!compareDate || !baseDate) {
+            return window.showToast("Please select both dates.", "error");
+        }
+
+        window.showLoader();
+        try {
+            document.getElementById('wa-header-prev').textContent = compareDate;
+            document.getElementById('wa-header-curr').textContent = baseDate;
+            document.getElementById('wa-print-subtitle').textContent = `Comparison: ${compareDate} to ${baseDate}`;
+
+            // Fetch declarations for compareDate
+            const prevSnap = await window.db.collection('declarations')
+                .where('date', '==', compareDate)
+                .get();
+            const prevData = {};
+            prevSnap.forEach(doc => {
+                const data = doc.data();
+                prevData[data.branch_id] = data;
+            });
+
+            // Fetch declarations for baseDate
+            const currSnap = await window.db.collection('declarations')
+                .where('date', '==', baseDate)
+                .get();
+            const currData = {};
+            currSnap.forEach(doc => {
+                const data = doc.data();
+                currData[data.branch_id] = data;
+            });
+
+            const tbody = document.querySelector('#table-weekly-analysis tbody');
+            if (tbody) tbody.innerHTML = '';
+
+            let hasData = false;
+            let totalIncrease = 0;
+            let totalDecrease = 0;
+
+            if (window.branchDataCache && tbody) {
+                const branches = Object.keys(window.branchDataCache).map(id => ({
+                    id: id,
+                    ...window.branchDataCache[id]
+                })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+                branches.forEach(branch => {
+                    if (companyFilter !== 'all' && branch.company !== companyFilter) return;
+
+                    const pData = prevData[branch.id];
+                    const cData = currData[branch.id];
+
+                    if (!pData && !cData) return; 
+
+                    const prevLoan = pData && typeof pData.outstanding_loan === 'number' ? pData.outstanding_loan : 0;
+                    const currLoan = cData && typeof cData.outstanding_loan === 'number' ? cData.outstanding_loan : 0;
+
+                    const diff = currLoan - prevLoan;
+                    let trendHtml = '-';
+                    if (diff > 0) {
+                        trendHtml = `<span style="color: #10b981; font-weight: bold;"><i class="fa-solid fa-arrow-up"></i> Increased</span>`;
+                        totalIncrease += diff;
+                    } else if (diff < 0) {
+                        trendHtml = `<span style="color: #ef4444; font-weight: bold;"><i class="fa-solid fa-arrow-down"></i> Decreased</span>`;
+                        totalDecrease += Math.abs(diff);
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${escapeHtml(branch.name || '')}</strong></td>
+                        <td>${escapeHtml(branch.company || '-')}</td>
+                        <td>${prevLoan > 0 ? prevLoan.toLocaleString() : '-'}</td>
+                        <td>${currLoan > 0 ? currLoan.toLocaleString() : '-'}</td>
+                        <td style="font-weight: bold;">${diff > 0 ? '+' : ''}${diff.toLocaleString()}</td>
+                        <td>${trendHtml}</td>
+                    `;
+                    tbody.appendChild(tr);
+                    hasData = true;
+                });
+            }
+            
+            const tfoot = document.getElementById('wa-table-foot');
+            const summaryTd = document.getElementById('wa-summary-totals');
+            if (tfoot && summaryTd) {
+                if (hasData) {
+                    tfoot.style.display = '';
+                    summaryTd.innerHTML = `
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                            <span style="color: #10b981;"><i class="fa-solid fa-arrow-up"></i> Total Increase: <strong>+${totalIncrease.toLocaleString()}</strong></span>
+                            <span style="color: #ef4444;"><i class="fa-solid fa-arrow-down"></i> Total Decrease: <strong>-${totalDecrease.toLocaleString()}</strong></span>
+                            <span style="color: #000; margin-top:4px; border-top:1px solid #ccc; padding-top:4px;">Net Change: <strong>${(totalIncrease - totalDecrease) > 0 ? '+' : ''}${(totalIncrease - totalDecrease).toLocaleString()}</strong></span>
+                        </div>
+                    `;
+                } else {
+                    tfoot.style.display = 'none';
+                }
+            }
+
+            if (!hasData && tbody) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">No declaration data found for the selected dates.</td></tr>';
+            }
+
+        } catch (err) {
+            console.error('Weekly Analysis Error:', err);
+            window.showToast('Failed to load analysis data.', 'error');
+        }
+        window.hideLoader();
+    });
+}
+
+window.printWeeklyAnalysis = () => {
+    const printArea = document.getElementById('wa-print-area');
+    if (!printArea) return;
+
+    const printContents = printArea.innerHTML;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        window.showToast("Popup blocked! Please allow popups for this site.", "error");
+        return;
+    }
+    printWindow.document.write('<!DOCTYPE html><html><head><title>Weekly Analysis</title>');
+    
+    // Bring in existing styles
+    const styles = document.querySelectorAll('link[rel="stylesheet"], style');
+    styles.forEach(style => {
+        printWindow.document.write(style.outerHTML);
+    });
+    
+    // Add specifically tailored A4 print styles
+    printWindow.document.write(`
+        <style>
+            @page { size: A4 portrait; margin: 5mm; }
+            body { 
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif !important; 
+                font-size: 8px !important; 
+                background: white !important; 
+                color: black !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                line-height: 1 !important;
+                zoom: 0.9;
+            }
+            .print-only { 
+                display: block !important; 
+                text-align: center; 
+                margin-bottom: 5px; 
+                border-bottom: 1px solid #000; 
+                padding-bottom: 3px; 
+            }
+            .print-only h2 { 
+                margin: 0 0 2px 0 !important; 
+                font-size: 12px !important; 
+                letter-spacing: 1px; 
+                text-transform: uppercase; 
+                color: #000; 
+            }
+            .print-only p { 
+                margin: 0 !important; 
+                font-size: 8px !important; 
+                color: #444; 
+            }
+            table { 
+                width: 100% !important; 
+                border-collapse: collapse !important; 
+                border: 1px solid #000 !important; 
+                font-size: 8px !important; 
+                page-break-inside: avoid !important;
+            }
+            tr { page-break-inside: avoid !important; page-break-after: auto !important; }
+            th, td { 
+                border: 1px solid #000 !important; 
+                padding: 1px 2px !important; 
+                text-align: left !important; 
+            }
+            th { 
+                background-color: #f1f5f9 !important; 
+                -webkit-print-color-adjust: exact; 
+                color: #000 !important; 
+                font-size: 8px !important; 
+                text-transform: uppercase; 
+                font-weight: bold !important; 
+            }
+            tfoot td { 
+                border-top: 1px solid #000 !important; 
+                background-color: #f8fafc !important; 
+                -webkit-print-color-adjust: exact; 
+            }
+            tfoot span {
+                font-size: 8px !important;
+            }
+            i.fa-solid { display: none !important; } /* Hide icons to save space/clean up */
+            span[style*="10b981"] { color: #059669 !important; -webkit-print-color-adjust: exact; font-weight: bold; }
+            span[style*="ef4444"] { color: #dc2626 !important; -webkit-print-color-adjust: exact; font-weight: bold; }
+        </style>
+    `);
+    printWindow.document.write('</head><body>');
+    printWindow.document.write(printContents);
+    printWindow.document.write('</body></html>');
+    
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+    }, 500);
+};
+
+// Also set default dates
+document.addEventListener('DOMContentLoaded', () => {
+    const baseDateInput = document.getElementById('admin-wa-base-date');
+    const compareDateInput = document.getElementById('admin-wa-compare-date');
+    if (baseDateInput && compareDateInput) {
+        const today = new Date();
+        const lastWeek = new Date();
+        lastWeek.setDate(today.getDate() - 7);
+        
+        baseDateInput.value = today.toISOString().split('T')[0];
+        compareDateInput.value = lastWeek.toISOString().split('T')[0];
+    }
+});

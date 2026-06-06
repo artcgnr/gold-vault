@@ -219,6 +219,8 @@
                 <a href="#" class="nav-item" data-target="admin-users"><i class="fa-solid fa-users"></i>&nbsp; Users</a>
                 <a href="#" class="nav-item" data-target="admin-reports"><i class="fa-solid fa-file-invoice"></i>&nbsp;
                     Reports</a>
+                <a href="#" class="nav-item" data-target="admin-weekly-analysis"><i class="fa-solid fa-chart-line"></i>&nbsp;
+                    Weekly Analysis</a>
                 <div class="nav-dropdown">
                     <div class="nav-dropdown-toggle" style="font-size: .9rem;">
                         <i class="fa-solid fa-key"></i> Key Management
@@ -453,16 +455,16 @@
                         <div class="mt-2"
                             style="display: flex; gap: 15px; justify-content: space-between; align-items: flex-end; flex-wrap: wrap;">
                             <div class="input-group" style="margin-bottom: 0; min-width: 160px;">
-                                <label for="user-branch-filter-company">Search User</label>
+                                <label for="user-branch-filter-company">Search User / Branch</label>
                                 <input type="search" auto-complete="off" id="user-branch-filter-search"
-                                    placeholder="Username..." style="width: 20vw;">
+                                    placeholder="Name, Email, or Branch..." style="width: 20vw;">
                             </div>
                             <div style="display: flex; gap: 10px;">
                                 <button id="btn-toggle-users" class="btn btn-primary" onclick="toggleResignedUsers()">
                                     <i class="fa-solid fa-user-slash"></i> <span>View Resigned Users</span>
                                 </button>
                                 <button class="btn btn-primary"
-                                    onclick="document.getElementById('modal-add-user').classList.remove('hidden')">
+                                    onclick="window.openAddUserModal()">
                                     <i class="fa-solid fa-user-plus"></i> New User
                                 </button>
                             </div>
@@ -1118,6 +1120,76 @@
                     </div>
                 </div>
             </div>
+            <!-- ADMIN WEEKLY ANALYSIS VIEW -->
+            <div id="admin-weekly-analysis" class="view-section hidden">
+                <div class="content-container">
+                    <header>
+                        <div>
+                            <h3>Weekly Loan Analysis</h3>
+                            <p style="font-size: 15px;" class="text-muted">Compare Outstanding Loans between two dates.</p>
+                        </div>
+                        <div class="report-header-actions">
+                            <button class="btn btn-secondary" onclick="window.printWeeklyAnalysis()">
+                                <i class="fa-solid fa-print"></i> Print Report
+                            </button>
+                        </div>
+                    </header>
+                    <div class="card glass-panel mb-4">
+                        <form id="form-admin-weekly-analysis" class="mt-2" style="display: flex; gap:8px; flex-wrap: wrap; align-items: center;">
+                            <div class="input-group">
+                                <label for="admin-wa-company">Company Filter</label>
+                                <select id="admin-wa-company">
+                                    <option value="all">All Companies</option>
+                                    <option value="ART LEASING">ART LEASING</option>
+                                    <option value="CHEGANNUR NIDHI">CHEGANNUR NIDHI</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="admin-wa-compare-date">Compare Date (Previous)</label>
+                                <input type="date" id="admin-wa-compare-date" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="admin-wa-base-date">Base Date (Current)</label>
+                                <input type="date" id="admin-wa-base-date" required>
+                            </div>
+                            <div class="form-actions" style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
+                                <button type="submit" class="btn btn-primary" style="height: 38px; display: flex; align-items: center;">
+                                    <i class="fa-solid fa-chart-bar"></i> Generate Analysis
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div id="wa-print-area" class="table-responsive" style="margin-top: 20px;">
+                            <div class="print-only mb-4" style="display: none;">
+                                <h2 style="text-align: center;">Weekly Loan Analysis</h2>
+                                <p style="text-align: center; color: #555;" id="wa-print-subtitle">Date Range</p>
+                            </div>
+                            <table id="table-weekly-analysis" class="admin-report">
+                                <thead style="color: rgb(0, 0, 0); position: sticky; top: 0; z-index: 1; background: #fff;">
+                                    <tr>
+                                        <th>Branch</th>
+                                        <th>Company</th>
+                                        <th>Previous Loan (<span id="wa-header-prev">-</span>)</th>
+                                        <th>Current Loan (<span id="wa-header-curr">-</span>)</th>
+                                        <th>Difference</th>
+                                        <th>Trend</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td colspan="6" style="text-align: center; padding: 20px;">Select dates and generate analysis to view data.</td></tr>
+                                </tbody>
+                                <tfoot id="wa-table-foot" style="display: none; font-weight: bold; background: #f8fafc; border-top: 2px solid #cbd5e1;">
+                                    <tr>
+                                        <td colspan="4" style="text-align: right; padding-right: 15px;">Summary Totals:</td>
+                                        <td colspan="2" id="wa-summary-totals"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- ADMIN REPORTS VIEW -->
             <div id="admin-reports" class="view-section hidden">
                 <div class="content-container">
@@ -1337,10 +1409,21 @@
                                     <input type="hidden" id="admin-pkt-type" value="permanent">
                                 </div>
                             </div>
-                            <div class="input-group full-width">
-                                <label>Reason for Transfer</label>
-                                <input type="text" id="admin-pkt-reason" required
-                                    placeholder="e.g. Permanent reassignment">
+                            <div class="two-col-grid">
+                                <div class="input-group" style="grid-column: 1 / -1;">
+                                    <label>Reason for Transfer</label>
+                                    <input type="text" id="admin-pkt-reason" required
+                                        placeholder="e.g. Permanent reassignment">
+                                </div>
+                                <div class="input-group">
+                                    <label>Auditor Name</label>
+                                    <input type="text" id="admin-pkt-auditor" required placeholder="Enter Auditor Name">
+                                </div>
+                                <div class="input-group">
+                                    <label>Appraiser Name</label>
+                                    <input type="text" id="admin-pkt-appraiser" required
+                                        placeholder="Enter Appraiser Name">
+                                </div>
                             </div>
                             <div class="form-actions full-width mt-2">
                                 <button type="submit" class="btn btn-primary"><i class="fa-solid fa-key"></i> Send

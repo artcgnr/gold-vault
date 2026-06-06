@@ -1469,8 +1469,14 @@ document.getElementById('btn-confirm-accept-key').addEventListener('click', asyn
                 const sData = senderDoc.data();
                 senderRole = sData.role || 'user';
                 const sUpdates = {};
-                if (sData.key1 === key_number) sUpdates.key1 = null;
-                if (sData.key2 === key_number) sUpdates.key2 = null;
+                if (sData.key1 === key_number) {
+                    sUpdates.key1 = null;
+                    sUpdates.key1_assigned_at = null;
+                }
+                if (sData.key2 === key_number) {
+                    sUpdates.key2 = null;
+                    sUpdates.key2_assigned_at = null;
+                }
                 if (Object.keys(sUpdates).length > 0) {
                     await window.db.collection("users").doc(sender_id).update(sUpdates);
                 }
@@ -1487,8 +1493,10 @@ document.getElementById('btn-confirm-accept-key').addEventListener('click', asyn
                     // Already assigned
                 } else if (!rData.key1) {
                     rUpdates.key1 = key_number;
+                    rUpdates.key1_assigned_at = firebase.firestore.FieldValue.serverTimestamp();
                 } else {
                     rUpdates.key2 = key_number;
+                    rUpdates.key2_assigned_at = firebase.firestore.FieldValue.serverTimestamp();
                 }
 
                 // Update Role if receiver is a 'reserve' user or has no role
@@ -1566,8 +1574,8 @@ async function loadKeyTransferHistory(tableId) {
         else if (data.status === 'rejected') statusBadge = '<span class="status-badge" style="background:#e60d0dff;color:#fff;" title="Rejected"><i class="fa-solid fa-times"></i></span>';
 
         let actionHtml = '-';
-        if (data.status === 'returned') {
-            if (data.print_taken && window.currentUserData.role !== 'admin') {
+        if (data.status === 'returned' || (data.transfer_type === 'permanent' && data.status === 'accepted')) {
+            if (data.print_taken) {
                 actionHtml = `<span class="status-badge" style="background: rgba(107, 114, 128, 0.2); color: #6b7280; font-size: 11px;"><i class="fa-solid fa-check"></i> Printed</span>`;
             } else {
                 actionHtml = `<button class="btn btn-primary btn-sm" style="padding: 4px 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;" onclick="window.printKeyTransferReceipt('${data.id}')"><i class="fa-solid fa-print"></i> Print</button>`;

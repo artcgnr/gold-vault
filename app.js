@@ -440,7 +440,7 @@ function setupDashboard(userData) {
         navAdmin.classList.remove('hidden');
         const allItems = navAdmin.querySelectorAll('.nav-item');
         if (activeRoles.includes('ho') && !activeRoles.includes('admin')) {
-            const allowedForHo = ['admin-reports', 'admin-backdate-approval', 'admin-key-holdings'];
+            const allowedForHo = ['admin-reports', 'admin-backdate-approval', 'admin-key-holdings', 'admin-weekly-analysis'];
             allItems.forEach(item => {
                 if (allowedForHo.includes(item.dataset.target)) item.style.display = 'block';
                 else item.style.display = 'none';
@@ -1009,82 +1009,149 @@ window.printKeyTransferReceipt = async (transferId, reloadAfter = false) => {
 
         const printContainer = document.getElementById('key-transfer-print');
         if (printContainer) {
-            printContainer.innerHTML = `
-                <div class="print-doc-container">
-                    <div class="print-header">
-                        <h1>ART GROUP</h1>
-                        <h2>Key Transfer & Return Receipt</h2>
-                        <p>Generated: <strong>${new Date().toLocaleString('en-GB')}</strong></p>
+            if (data.transfer_type === 'permanent') {
+                const transferDate = (data.accepted_at || data.created_at || new Date());
+                const displayDate = formatTime(transferDate).split(',')[0].trim();
+
+                printContainer.innerHTML = `
+                    <div class="print-doc-container" style="padding: 20px; font-family: 'Times New Roman', serif; line-height: 1.6; color: #000; min-height: 250mm; box-sizing: border-box; display: flex; flex-direction: column;">
+                        <h1 style="text-align: center; margin-bottom: 5px; text-decoration: underline; font-size: 24px;">CERTIFICATE</h1>
+                        <h2 style="text-align: center; margin-top: 0; margin-bottom: 30px; font-size: 18px;">HANDOVER / TAKEOVER</h2>
+                        
+                        <p style="text-align: justify; font-size: 16px; margin-bottom: 25px;">
+                            I, Mr./Ms. <strong>${escapeHtml(data.sender_name)}</strong> hereby handover my Locker and Shutter Key No. <strong>${escapeHtml(data.key_number)}</strong> of <strong>${escapeHtml(senderBranchName)}</strong> Branch to Mr./Ms. <strong>${escapeHtml(data.receiver_name)}</strong> on <strong>${displayDate}</strong> (date) in presence of Auditor Mr. <strong>${escapeHtml(data.auditor_name || '........................................')}</strong> and Appraiser Mr. <strong>${escapeHtml(data.appraiser_name || '........................................')}</strong>
+                        </p>
+
+                        <p style="text-align: justify; font-size: 16px; margin-bottom: 25px;">
+                            I, Mr./Ms. <strong>${escapeHtml(data.receiver_name)}</strong> hereby takeover Locker and Shutter Key No. <strong>${escapeHtml(data.key_number)}</strong> of <strong>${escapeHtml(senderBranchName)}</strong> branch from Mr./Ms. <strong>${escapeHtml(data.sender_name)}</strong> on <strong>${displayDate}</strong> (date) in presence of Auditor Mr. <strong>${escapeHtml(data.auditor_name || '........................................')}</strong> and Appraiser Mr. <strong>${escapeHtml(data.appraiser_name || '........................................')}</strong>
+                        </p>
+
+                        <p style="text-align: justify; font-size: 16px; margin-bottom: 40px;">
+                            During the auditing and appraising done in our branch, we found everything correct and satisfactory to our knowledge.
+                        </p>
+
+                        <table style="width: 100%; margin-bottom: 40px; font-size: 16px; border: none;">
+                            <tr>
+                                <td style="width: 50%; text-align: left; padding: 0; border: none;">
+                                    <div style="font-weight: bold; margin-bottom: 35px;">(HANDOVER)
+                                    <strong>${escapeHtml(data.sender_name)}</strong></div>
+                                    Signature: _______________________
+                                </td>
+                                <td style="width: 50%; text-align: right; padding: 0; border: none;">
+                                    <div style="font-weight: bold; margin-bottom: 35px;">(TAKEOVER)
+                                     <strong>${escapeHtml(data.receiver_name)}</strong></div>
+                                    Signature: _______________________
+                                </td>
+                            </tr>
+                        </table>
+
+                        <div style="font-weight: bold; font-size: 16px; margin-bottom: 15px;">Witness:</div>
+                        
+                        <table style="width: 100%; font-size: 16px; border: none; margin-bottom: 30px; line-height: 2;">
+                            <tr>
+                                <td style="width: 15%; padding: 0; border: none;">Auditor:</td>
+                                <td style="width: 35%; padding: 0; border: none;"><strong>${escapeHtml(data.auditor_name || '...............................................')}</strong></td>
+                                <td style="width: 15%; padding: 0; border: none;">Signature:</td>
+                                <td style="width: 35%; padding: 0; border: none;">.........................................</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 0; border: none;">Appraiser:</td>
+                                <td style="padding: 0; border: none;"><strong>${escapeHtml(data.appraiser_name || '...............................................')}</strong></td>
+                                <td style="padding: 0; border: none;">Signature:</td>
+                                <td style="padding: 0; border: none;">..........................................</td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" style="width: 50%; text-align: left; padding: 0; border: none; vertical-align: bottom;">
+                                    Date & Time: <strong>${formatTime(transferDate)}</strong>
+                                </td>
+                                <td colspan="2" style="width: 50%; text-align: center; padding: 0; border: none;">
+                                    <div style="width: 140px; height: 90px; border: 1px dashed #ccc; margin-bottom: 8px; margin-left: auto; margin-right: auto;"></div>
+                                    Branch Seal:
+                                </td>
+                            </tr>
+                        </table>
+
+                       
                     </div>
-
-                    <div class="print-section-title">Transfer Details</div>
-                    <table class="print-data-table">
-                        <tbody>
-                            <tr>
-                                <td><strong>Key Number</strong></td>
-                                <td>${escapeHtml(data.key_number)}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Transfer Type</strong></td>
-                                <td>${data.transfer_type === 'temporary' ? 'Temporary (' + data.from_date + ' to ' + data.to_date + ')' : 'Permanent'}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Reason</strong></td>
-                                <td>${escapeHtml(data.reason)}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Sender</strong></td>
-                                <td>${escapeHtml(data.sender_name)} (${escapeHtml(senderBranchName)})</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Receiver</strong></td>
-                                <td>${escapeHtml(data.receiver_name)} (${escapeHtml(receiverBranchName)})</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <div class="print-section-title">DATE AND TIME</div>
-                    <table class="print-data-table">
-                        <tbody>
-                            <tr>
-                                <td><strong>Request Sent At</strong></td>
-                                <td>${formatTime(data.created_at)}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Accepted At</strong></td>
-                                <td>${formatTime(data.accepted_at)}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Returned At</strong></td>
-                                <td>${formatTime(data.returned_at)}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <div class="print-section-title">Signatures with name </div>
-                    <div class="print-signatures-grid" style="margin-top: 10px;">
-                        <div class="print-signature-box" style="height: 150px; display: flex; flex-direction: column; justify-content: flex-end;">
-                            <div class="signature-line" style="margin-top: 0;">
-                                ${escapeHtml(data.sender_name)} Signature
-                            </div>
+                `;
+            } else {
+                printContainer.innerHTML = `
+                    <div class="print-doc-container">
+                        <div class="print-header">
+                            <h1>ART GROUP</h1>
+                            <h2>Key Transfer & Return Receipt</h2>
+                            <p>Generated: <strong>${new Date().toLocaleString('en-GB')}</strong></p>
                         </div>
-                        <div class="print-signature-box" style="height: 150px; display: flex; flex-direction: column; justify-content: flex-end;">
-                            <div class="signature-line" style="margin-top: 0;">
-                                 ${escapeHtml(data.receiver_name)} Signature
+
+                        <div class="print-section-title">Transfer Details</div>
+                        <table class="print-data-table">
+                            <tbody>
+                                <tr>
+                                    <td><strong>Key Number</strong></td>
+                                    <td>${escapeHtml(data.key_number)}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Transfer Type</strong></td>
+                                    <td>${data.transfer_type === 'temporary' ? 'Temporary (' + data.from_date + ' to ' + data.to_date + ')' : 'Permanent'}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Reason</strong></td>
+                                    <td>${escapeHtml(data.reason)}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Sender</strong></td>
+                                    <td>${escapeHtml(data.sender_name)} (${escapeHtml(senderBranchName)})</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Receiver</strong></td>
+                                    <td>${escapeHtml(data.receiver_name)} (${escapeHtml(receiverBranchName)})</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="print-section-title">DATE AND TIME</div>
+                        <table class="print-data-table">
+                            <tbody>
+                                <tr>
+                                    <td><strong>Request Sent At</strong></td>
+                                    <td>${formatTime(data.created_at)}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Accepted At</strong></td>
+                                    <td>${formatTime(data.accepted_at)}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Returned At</strong></td>
+                                    <td>${formatTime(data.returned_at)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="print-section-title">Signatures with name </div>
+                        <div class="print-signatures-grid" style="margin-top: 10px;">
+                            <div class="print-signature-box" style="height: 150px; display: flex; flex-direction: column; justify-content: flex-end;">
+                                <div class="signature-line" style="margin-top: 0;">
+                                    ${escapeHtml(data.sender_name)} Signature
+                                </div>
                             </div>
+                            <div class="print-signature-box" style="height: 150px; display: flex; flex-direction: column; justify-content: flex-end;">
+                                <div class="signature-line" style="margin-top: 0;">
+                                     ${escapeHtml(data.receiver_name)} Signature
+                                </div>
+                            </div>
+                              
                         </div>
-                          
+                        <div class="print-section-title"> 
+                              </div>
                     </div>
-                    <div class="print-section-title"> 
-                          </div>
-                </div>
-            `;
+                `;
+            }
         }
 
         document.body.setAttribute('data-print-section', 'key-transfer-print');
         window.print();
 
-        if (!data.print_taken && window.currentUserData && window.currentUserData.role !== 'admin' && window.currentUserData.role !== 'hr' && window.currentUserData.role !== 'ho') {
+        if (!data.print_taken) {
             await window.db.collection('key_transfers').doc(transferId).update({
                 print_taken: true,
                 print_taken_at: firebase.firestore.FieldValue.serverTimestamp(),
