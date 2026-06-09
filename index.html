@@ -856,6 +856,23 @@
                         </div>
                     </div>
 
+                    <div class="card glass-panel mt-4">
+                        <h3>Pending Branch Totals</h3>
+                        <div class="table-responsive">
+                            <table id="table-pending-totals">
+                                <thead
+                                    style="position: sticky; top: 0;z-index: 1; color: #000000; background: #fff; backdrop-filter: blur(100px);">
+                                    <tr>
+                                        <th>Outstanding Loan (₹)</th>
+                                        <th>Total Stock</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <div class="card glass-panel mt-4 declaration-box">
                         <div class="declaration-content">
                             <div class="icon-circle"><i class="fa-solid fa-clipboard-check"></i></div>
@@ -1129,6 +1146,9 @@
                             <p style="font-size: 15px;" class="text-muted">Compare Outstanding Loans between two dates.</p>
                         </div>
                         <div class="report-header-actions">
+                            <button class="btn btn-secondary" onclick="window.downloadReportExcel('admin-weekly-analysis', 'weekly-loan-analysis')">
+                                <i class="fa-solid fa-file-excel"></i> Export Excel
+                            </button>
                             <button class="btn btn-secondary" onclick="window.printWeeklyAnalysis()">
                                 <i class="fa-solid fa-print"></i> Print Report
                             </button>

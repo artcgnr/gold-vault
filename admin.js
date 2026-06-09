@@ -1039,6 +1039,13 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {},
     branchSnap.forEach(b => branchMap[b.id] = b.data());
 
     let parsedDocs = snap.docs.map(d => Object.assign(d.data(), { _id: d.id }));
+    
+    // Exclude HEAD OFFICE
+    parsedDocs = parsedDocs.filter(d => {
+        const bData = branchMap[d.branch_id];
+        return bData && bData.name && bData.name.toUpperCase() !== 'HEAD OFFICE';
+    });
+
     if (filters.branchId && filters.branchId !== 'all') {
         const filterId = String(filters.branchId);
         parsedDocs = parsedDocs.filter(d => String(d.branch_id) === filterId);
@@ -1057,6 +1064,8 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {},
         const targetDate = filters.fromDate;
         Object.keys(branchMap).forEach(branchId => {
             const bData = branchMap[branchId];
+            if (bData && bData.name && bData.name.toUpperCase() === 'HEAD OFFICE') return;
+            
             if (filters.company && filters.company !== 'all' && bData.company !== filters.company) {
                 return;
             }
