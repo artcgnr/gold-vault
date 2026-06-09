@@ -1,1180 +1,1752 @@
+document.querySelectorAll('.cash-input').forEach(input => {
+    input.addEventListener('input', updateCashTotal);
+});
 
-window.firebaseConfig = firebaseConfig;
+function updateCashTotal() {
+    const c500 = parseInt(document.getElementById('cash-500').value) || 0;
+    const c200 = parseInt(document.getElementById('cash-200').value) || 0;
+    const c100 = parseInt(document.getElementById('cash-100').value) || 0;
+    const c50 = parseInt(document.getElementById('cash-50').value) || 0;
+    const c20 = parseInt(document.getElementById('cash-20').value) || 0;
+    const c10 = parseInt(document.getElementById('cash-10').value) || 0;
+    const coins = parseInt(document.getElementById('cash-coins').value) || 0;
 
-const isConfigured = true;
-
-let app, auth, db;
-try {
-    if (isConfigured) {
-        app = firebase.initializeApp(firebaseConfig);
-        auth = firebase.auth();
-        db = firebase.firestore();
-    }
-} catch (err) {
-    alert("FATAL ERROR during initialization: " + err.message);
+    const total = (c500 * 500) + (c200 * 200) + (c100 * 100) + (c50 * 50) + (c20 * 20) + (c10 * 10) + coins;
+    document.getElementById('cash-total-display').textContent = total.toLocaleString();
+    return { c500, c200, c100, c50, c20, c10, coins, total };
 }
 
-// Global State
-window.currentUser = null;
-window.currentUserData = null;
-window.db = db;
-window.auth = auth;
+document.addEventListener('initUser1', async () => {
+    const userData = window.currentUserData;
+    const branchId = userData.branch_id ? String(userData.branch_id) : '';
 
-// UI Utilities
-window.showLoader = () => document.getElementById('loader').classList.remove('hidden');
-window.hideLoader = () => document.getElementById('loader').classList.add('hidden');
-
-window.logAuditEvent = async (action, type, details) => {
     try {
-        await window.db.collection("audit_logs").add({
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            uid: window.currentUser ? window.currentUser.uid : 'system',
-            user_name: window.currentUserData ? window.currentUserData.name : (window.currentUser ? window.currentUser.email : 'System'),
-            user_role: window.currentUserData ? window.currentUserData.role : 'N/A',
-            action: action,
-            type: type, // login, logout, declaration, deletion, admin, security
-            details: details,
-            branch_id: (window.currentUserData && window.currentUserData.branch_id) ? window.currentUserData.branch_id : null
-        });
+        const branchDoc = await window.db.collection("branches").doc(branchId).get();
+        if (branchDoc.exists) {
+            const bData = branchDoc.data();
+            const u1Name = document.getElementById('u1-branch-name');
+            if (u1Name) u1Name.textContent = bData.name || branchId;
+            const u1Stock = document.getElementById('u1-total-stock');
+            if (u1Stock) u1Stock.textContent = bData.total_stock || 0;
+            const u1Loan = document.getElementById('u1-total-loan');
+            if (u1Loan) u1Loan.textContent = "₹" + (bData.outstanding_loan || 0).toLocaleString();
+        } else {
+            const u1Name = document.getElementById('u1-branch-name');
+            if (u1Name) u1Name.textContent = "Unknown Branch";
+        }
     } catch (err) {
-        console.error("Audit log error:", err);
-    }
-};
-
-window.showToast = (message, type = 'info') => {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    container.appendChild(toast);
-    setTimeout(() => {
-        toast.style.animation = 'slideInRight 0.3s ease reverse forwards';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-};
-
-// Routing & View Management
-const switchView = (targetId) => {
-    document.querySelectorAll('.view-section').forEach(section => section.classList.add('hidden'));
-    document.getElementById(targetId).classList.remove('hidden');
-
-    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-    document.querySelector(`[data-target="${targetId}"]`).classList.add('active');
-};
-
-window.updateReportHeader = (sectionId, summaryText) => {
-    const section = document.getElementById(sectionId);
-    if (!section) return;
-
-    const summaryEl = section.querySelector('.report-summary');
-    const generatedEl = section.querySelector('.report-generated');
-
-    if (summaryEl) {
-        summaryEl.textContent = summaryText || '';
+        console.error("Error fetching branch data:", err);
     }
 
-    if (generatedEl) {
-        generatedEl.textContent = new Date().toLocaleString();
+    const user1ReportsBtn = document.querySelector('[data-target="user1-reports"]');
+    if (user1ReportsBtn) {
+        user1ReportsBtn.addEventListener('click', () => loadBranchReports('table-user1-reports'));
     }
-};
+    await checkBackdateApproval('user1');
+    loadUser1Entries();
+});
 
-function escapeExportHtml(value) {
-    return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+document.getElementById('btn-u1-exit-backdate').addEventListener('click', () => {
+    window.activeBackdate = null;
+    document.getElementById('u1-backdate-banner').classList.add('hidden');
+    loadUser1Entries();
+});
+
+async function loadUser1Entries() {
+    try {
+        const branchId = window.currentUserData.branch_id ? String(window.currentUserData.branch_id) : '';
+        const now = new Date();
+
+        let dateStr = now.toISOString().split('T')[0];
+        let startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        if (window.activeBackdate) {
+            dateStr = window.activeBackdate;
+            const [y, m, d] = dateStr.split('-').map(Number);
+            startOfDay = new Date(y, m - 1, d);
+        }
+
+        const dateBadge = document.getElementById('u1-active-date');
+        if (dateBadge) dateBadge.textContent = formatDateDisplay(dateStr);
+
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const tbody = document.querySelector('#table-my-entries tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        let entries = [];
+
+        const btnStockIn = document.querySelector('#form-stock-in button[type="submit"]');
+        const btnStockOut = document.querySelector('#form-stock-out button[type="submit"]');
+        const btnCash = document.querySelector('#form-cash-entry button[type="submit"]');
+        const btnAppraisals = document.querySelector('#form-appraisals button[type="submit"]');
+        const btnBranchTotals = document.querySelector('#form-branch-totals button[type="submit"]');
+
+        if (btnStockIn) { btnStockIn.disabled = false; btnStockIn.innerHTML = 'Submit Gold IN'; }
+        if (btnStockOut) { btnStockOut.disabled = false; btnStockOut.innerHTML = 'Submit Gold OUT'; }
+        if (btnCash) { btnCash.disabled = false; btnCash.innerHTML = '<i class="fa-solid fa-money-bill-wave"></i> Submit Cash'; }
+        if (btnAppraisals) { btnAppraisals.disabled = false; btnAppraisals.innerHTML = '<i class="fa-solid fa-upload"></i> Submit Appraisals'; }
+        if (btnBranchTotals) { btnBranchTotals.disabled = false; btnBranchTotals.innerHTML = '<i class="fa-solid fa-upload"></i> Update Totals'; }
+
+        try {
+            const snapStock = await window.db.collection("stock_transactions").where("branch_id", "==", branchId).get();
+            snapStock.forEach(doc => {
+                const d = doc.data();
+                const txDateObj = d.timestamp && typeof d.timestamp.toDate === 'function' ? d.timestamp.toDate() : new Date();
+
+                if (txDateObj >= startOfDay && txDateObj <= endOfDay) {
+                    entries.push({ id: doc.id, collection: 'stock_transactions', time: txDateObj, type: 'Stock ' + d.type, details: d.stock_number, status: d.status });
+                    if (d.type === 'IN' && btnStockIn) { btnStockIn.disabled = true; btnStockIn.innerHTML = 'Submitted for Date'; }
+                    if (d.type === 'OUT' && btnStockOut) { btnStockOut.disabled = true; btnStockOut.innerHTML = 'Submitted for Date'; }
+                }
+            });
+        } catch (e) { console.error("Stock fetch error:", e); }
+
+        try {
+            const snapCash = await window.db.collection("cash_entries").where("branch_id", "==", branchId).get();
+            snapCash.forEach(doc => {
+                const d = doc.data();
+                const txDateObj = d.timestamp && typeof d.timestamp.toDate === 'function' ? d.timestamp.toDate() : new Date();
+
+                if (txDateObj >= startOfDay && txDateObj <= endOfDay) {
+                    entries.push({ id: doc.id, collection: 'cash_entries', time: txDateObj, type: 'Cash', details: '₹' + d.total_amount, status: d.status });
+                    if (btnCash) { btnCash.disabled = true; btnCash.innerHTML = 'Submitted for Date'; }
+                }
+            });
+        } catch (e) { console.error("Cash fetch error:", e); }
+
+        try {
+            const snapAppraisals = await window.db.collection("daily_appraisals").where("branch_id", "==", branchId).get();
+            snapAppraisals.forEach(doc => {
+                const d = doc.data();
+                const txDateObj = d.timestamp && typeof d.timestamp.toDate === 'function' ? d.timestamp.toDate() : new Date();
+
+                if (txDateObj >= startOfDay && txDateObj <= endOfDay) {
+                    entries.push({ id: doc.id, collection: 'daily_appraisals', time: txDateObj, type: 'Appraisals', details: `${d.appraised} Appraised, ${d.not_appraised || 0} Not Appraised`, status: d.status });
+                    if (btnAppraisals) { btnAppraisals.disabled = true; btnAppraisals.innerHTML = 'Submitted for Date'; }
+                }
+            });
+        } catch (e) { console.error("Appraisals fetch error:", e); }
+
+        try {
+            const snapTotals = await window.db.collection("daily_totals").where("branch_id", "==", branchId).where("date", "==", dateStr).get();
+            if (!snapTotals.empty) {
+                const docSnap = snapTotals.docs[0];
+                const d = docSnap.data();
+                const txDateObj = d.timestamp && typeof d.timestamp.toDate === 'function' ? d.timestamp.toDate() : new Date();
+                entries.push({ id: docSnap.id, collection: 'daily_totals', time: txDateObj, type: 'Branch Totals', details: `Stock: ${d.total_stock}, Loan: ₹${d.outstanding_loan.toLocaleString()}`, status: d.status || 'approved' });
+                if (btnBranchTotals) { btnBranchTotals.disabled = true; btnBranchTotals.innerHTML = 'Submitted for Date'; }
+            }
+        } catch (e) { console.error("Totals fetch error:", e); }
+
+        let signed = false;
+        try {
+            const docId = branchId + "_" + dateStr;
+            const decl = await window.db.collection("declarations").doc(docId).get();
+            if (decl.exists && decl.data().user1_status === 'Signed') {
+                signed = true;
+                const d = decl.data();
+                const txDateObj = d.timestamp && typeof d.timestamp.toDate === 'function' ? d.timestamp.toDate() : new Date();
+                entries.push({ time: txDateObj, type: 'Declaration', details: 'End of Day', status: 'approved' });
+
+                document.getElementById('btn-u1-declare').disabled = true;
+                document.getElementById('btn-u1-declare').textContent = 'Signed';
+                document.getElementById('u1-declare-status').innerHTML = `<i class="fa-solid fa-check text-success"></i> Declaration already signed for ${formatDateDisplay(dateStr)}.`;
+
+                if (btnBranchTotals) { btnBranchTotals.disabled = true; btnBranchTotals.innerHTML = 'Locked'; }
+            } else {
+                let allDataEntered = (btnStockIn && btnStockIn.disabled) && 
+                                     (btnStockOut && btnStockOut.disabled) && 
+                                     (btnCash && btnCash.disabled) && 
+                                     (btnAppraisals && btnAppraisals.disabled) && 
+                                     (btnBranchTotals && btnBranchTotals.disabled);
+
+                if (allDataEntered) {
+                    document.getElementById('btn-u1-declare').disabled = false;
+                    document.getElementById('btn-u1-declare').textContent = 'Sign Declaration';
+                    document.getElementById('u1-declare-status').innerHTML = '';
+                } else {
+                    document.getElementById('btn-u1-declare').disabled = true;
+                    document.getElementById('btn-u1-declare').textContent = 'Complete Entries First';
+                    document.getElementById('u1-declare-status').innerHTML = '<span class="text-warning"><i class="fa-solid fa-triangle-exclamation"></i> Please submit Gold IN, Gold OUT, Cash, Appraisals, and Branch Totals before signing.</span>';
+                }
+
+                if (btnBranchTotals && btnBranchTotals.innerHTML !== 'Submitted for Date') { btnBranchTotals.disabled = false; btnBranchTotals.innerHTML = '<i class="fa-solid fa-upload"></i> Update Totals'; }
+            }
+        } catch (e) { console.error("Declaration fetch error:", e); }
+
+        entries.sort((a, b) => b.time - a.time);
+
+        const canDelete = !signed;
+
+        entries.forEach(e => {
+            const tr = document.createElement('tr');
+            const badgeClass = e.status === 'approved' ? 'status-approved' : 'status-pending';
+            const displayTime = e.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            let actionHtml = '-';
+            const isDeletableStatus = e.status === 'pending' || e.collection === 'daily_totals';
+            if (canDelete && e.id && e.collection && isDeletableStatus) {
+                actionHtml = `<button class="btn btn-icon btn-sm text-danger" onclick="deleteUser1Entry('${e.collection}', '${e.id}')" title="Delete Entry"><i class="fa-solid fa-trash-can"></i></button>`;
+            }
+
+            tr.innerHTML = `
+                <td>${displayTime}</td>
+                <td><strong>${e.type}</strong></td>
+                <td>${e.details}</td>
+                <td><span class="status-badge ${badgeClass}">${e.status}</span></td>
+                <td>${actionHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error("Error loading user 1 entries:", error);
+    }
 }
 
-window.downloadReportExcel = (sectionId, fileNameBase = 'report') => {
-    const section = document.getElementById(sectionId);
-    const table = section?.querySelector('table');
-
-    if (!table) {
-        window.showToast('No report table available to export.', 'error');
-        return;
-    }
-
-    const reportTitle = section.querySelector('.report-print-header h1')?.textContent || 'Report';
-    const reportSummary = section.querySelector('.report-summary')?.textContent || '';
-    const generatedAt = new Date().toLocaleString();
-    const safeFileName = String(fileNameBase || 'report')
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9-_]+/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '') || 'report';
-
-    const clonedTable = table.cloneNode(true);
-    clonedTable.querySelectorAll('i').forEach(icon => icon.remove());
-
-    const excelHtml = `<!DOCTYPE html>
-<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
-<head>
-    <meta charset="UTF-8">
-    <meta name="ProgId" content="Excel.Sheet">
-    <meta name="Generator" content="Gold Vault">
-    <style>
-        body { font-family: Arial, sans-serif; padding: 16px; color: #111111; }
-        h1 { font-size: 22px; margin: 0 0 6px; }
-        p { margin: 0 0 6px; color: #444444; }
-        table { border-collapse: collapse; width: 100%; margin-top: 16px; }
-        th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; vertical-align: top; }
-        th { background: #f8fafc; font-weight: 700; }
-    </style>
-</head>
-<body>
-    <h1>${escapeExportHtml(reportTitle)}</h1>
-    <p>${escapeExportHtml(reportSummary)}</p>
-    <p>Generated On: ${escapeExportHtml(generatedAt)}</p>
-    ${clonedTable.outerHTML}
-</body>
-</html>`;
-
-    const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-
-    link.href = url;
-    link.download = `${safeFileName}.xls`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-};
-
-window.printReport = (sectionId) => {
-    window.updateReportHeader(
-        sectionId,
-        document.querySelector(`#${sectionId} .report-summary`)?.textContent || ''
-    );
-    document.body.setAttribute('data-print-section', sectionId);
-    window.print();
-};
-
-window.addEventListener('afterprint', () => {
-    document.body.removeAttribute('data-print-section');
-});
-
-document.querySelectorAll('.nav-item').forEach(nav => {
-    nav.addEventListener('click', (e) => {
-        e.preventDefault();
-        switchView(nav.dataset.target);
-    });
-});
-
-document.querySelectorAll('.nav-dropdown-toggle').forEach(toggle => {
-    toggle.addEventListener('click', (e) => {
-        e.preventDefault();
-        const menu = toggle.nextElementSibling;
-        const icon = toggle.querySelector('.fa-chevron-down');
-        if (icon) icon.style.transition = 'transform 0.3s ease';
-
-        if (menu.classList.contains('hidden')) {
-            menu.classList.remove('hidden');
-            if (icon) icon.style.transform = 'rotate(180deg)';
-        } else {
-            menu.classList.add('hidden');
-            if (icon) icon.style.transform = 'rotate(0deg)';
+// Prevent Enter key from submitting forms
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'textarea') {
+        const form = e.target.closest('form');
+        if (form && (form.id.startsWith('form-') || form.id === 'login-form')) {
+            e.preventDefault();
+            return false;
         }
-    });
+    }
 });
 
-// Authentication Flow
-const loginForm = document.getElementById('login-form');
-loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!isConfigured) return;
-
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
+window.deleteUser1Entry = async (collection, id) => {
+    if (!confirm("Are you sure you want to delete this entry?")) return;
 
     window.showLoader();
     try {
-        await auth.signInWithEmailAndPassword(email, password);
+        await window.db.collection(collection).doc(id).delete();
+        window.logAuditEvent("Entry Deleted", "deletion", `Deleted ${id} from ${collection}`);
+        window.showToast("Entry deleted successfully.", "success");
+        loadUser1Entries();
     } catch (error) {
-        window.hideLoader();
         window.showToast(error.message, "error");
     }
-});
-
-document.getElementById('logout-btn').addEventListener('click', () => {
-    if (auth) auth.signOut();
-});
-
-if (isConfigured) {
-    auth.onAuthStateChanged(async (user) => {
-        window.showLoader();
-        if (user) {
-            window.currentUser = user;
-            try {
-                const userDoc = await db.collection("users").doc(user.uid).get();
-                if (userDoc.exists) {
-                    window.currentUserData = userDoc.data();
-
-                    if (window.currentUserData.is_resigned) {
-                        window.showToast("Your access has been revoked due to resignation.", "error");
-                        auth.signOut();
-                        return;
-                    }
-
-                    if (window.currentUserData.role !== 'admin' && window.currentUserData.role !== 'hr' && window.currentUserData.role !== 'ho') {
-                        const contexts = [];
-
-                        // 1. Check if user SENT a key TEMPORARILY (Access Suspended)
-                        let suspended = false;
-                        try {
-                            const sentKeysSnap = await db.collection('key_transfers')
-                                .where('sender_id', '==', user.uid)
-                                .where('status', '==', 'accepted')
-                                .where('transfer_type', '==', 'temporary')
-                                .get();
-
-                            if (!sentKeysSnap.empty) {
-                                suspended = true;
-                                window.currentUserData.sent_key_to = sentKeysSnap.docs[0].data().receiver_name;
-                            }
-                        } catch (err) { console.error("Error fetching sent keys:", err); }
-
-                        // 2. Add original context if not suspended
-                        const originalBranchId = window.currentUserData.branch_id ? String(window.currentUserData.branch_id) : null;
-                        if (!suspended && originalBranchId) {
-                            try {
-                                const branchDoc = await db.collection('branches').doc(originalBranchId).get();
-                                contexts.push({
-                                    branch_id: originalBranchId,
-                                    branch_name: branchDoc.exists ? (branchDoc.data().name || "My Branch") : "My Branch",
-                                    roles: [window.currentUserData.role || 'user'],
-                                    type: 'original'
-                                });
-                            } catch (err) { console.error("Error fetching original branch:", err); }
-                        }
-
-                        // 3. Fetch all RECEIVED keys (Transferred contexts)
-                        try {
-                            const activeKeysSnap = await db.collection('key_transfers')
-                                .where('receiver_id', '==', user.uid)
-                                .where('status', '==', 'accepted')
-                                .get();
-
-                            for (const docSnap of activeKeysSnap.docs) {
-                                const keyData = docSnap.data();
-                                const bId = keyData.branch_id ? String(keyData.branch_id) : null;
-                                if (!bId) continue;
-
-                                const branchDoc = await db.collection('branches').doc(bId).get();
-                                const bName = branchDoc.exists ? (branchDoc.data().name || bId) : bId;
-
-                                const senderDoc = await db.collection('users').doc(keyData.sender_id).get();
-                                const sRole = senderDoc.exists ? senderDoc.data().role : 'user';
-
-                                let existing = contexts.find(c => c.branch_id === bId);
-                                if (existing) {
-                                    if (!existing.roles.includes(sRole)) existing.roles.push(sRole);
-                                } else {
-                                    contexts.push({
-                                        branch_id: bId,
-                                        branch_name: bName,
-                                        roles: [sRole],
-                                        type: 'transferred'
-                                    });
-                                }
-                            }
-                        } catch (err) { console.error("Error fetching received keys:", err); }
-
-                        window.currentUserData.available_contexts = contexts;
-
-                        // Set default context if none selected
-                        if (!window.activeContextId || !contexts.find(c => c.branch_id === window.activeContextId)) {
-                            window.activeContextId = contexts.length > 0 ? contexts[0].branch_id : originalBranchId;
-                        }
-
-                        const activeContext = contexts.find(c => c.branch_id === window.activeContextId);
-                        if (activeContext) {
-                            window.currentUserData.branch_id = activeContext.branch_id;
-                            window.currentUserData.active_roles = activeContext.roles;
-                        } else {
-                            window.currentUserData.active_roles = ['user'];
-                        }
-                    }
-
-                    setupDashboard(window.currentUserData);
-                    window.logAuditEvent("User Login", "login", `Logged in to role: ${window.currentUserData.role}`);
-                } else {
-                    const allUsers = await db.collection("users").get();
-                    if (allUsers.empty) {
-                        const newAdminData = {
-                            email: user.email,
-                            role: 'admin',
-                            name: 'Administrator',
-                            created_at: firebase.firestore.FieldValue.serverTimestamp()
-                        };
-                        await db.collection("users").doc(user.uid).set(newAdminData);
-                        window.currentUserData = newAdminData;
-                        window.currentUserData.active_roles = ['admin'];
-                        setupDashboard(window.currentUserData);
-                        window.logAuditEvent("Initial Admin Setup", "admin", "First account auto-created as Admin");
-                        window.showToast("First account automatically set as Admin.", "success");
-                    } else {
-                        window.showToast("User record not found in database. Contact your Admin.", "error");
-                        auth.signOut();
-                    }
-                }
-            } catch (error) {
-                console.error("Error fetching user data:", error);
-                alert("Database Error: " + error.message + "\n\nDid you enable Firestore Database in the console?");
-                window.showToast("Failed to fetch user data.", "error");
-                auth.signOut();
-            }
-        } else {
-            if (window.currentUser) {
-                window.logAuditEvent("User Logout", "logout", "Session ended");
-            }
-            window.currentUser = null;
-            window.currentUserData = null;
-            showLogin();
-        }
-        window.hideLoader();
-    });
-}
-
-function showLogin() {
-    document.getElementById('login-section').classList.add('active');
-    document.getElementById('main-app').classList.add('hidden');
-    document.getElementById('nav-admin').classList.add('hidden');
-    document.getElementById('nav-user1').classList.add('hidden');
-    document.getElementById('nav-user2').classList.add('hidden');
-    document.getElementById('nav-reserve').classList.add('hidden');
-}
-
-window.switchContext = async (branchId) => {
-    window.showLoader();
-    window.activeContextId = branchId;
-
-    const context = window.currentUserData.available_contexts.find(c => c.branch_id === branchId);
-    if (context) {
-        window.currentUserData.branch_id = context.branch_id;
-        window.currentUserData.active_roles = context.roles;
-    }
-
-    // Reset navigation visibility before re-setup
-    document.getElementById('nav-admin').classList.add('hidden');
-    document.getElementById('nav-user1').classList.add('hidden');
-    document.getElementById('nav-user2').classList.add('hidden');
-    document.getElementById('nav-reserve').classList.add('hidden');
-
-    setupDashboard(window.currentUserData);
     window.hideLoader();
 };
 
-function setupDashboard(userData) {
-    document.getElementById('login-section').classList.remove('active');
-    document.getElementById('main-app').classList.remove('hidden');
-
-    document.getElementById('user-display-name').textContent = userData.name || "User";
-
-    // Branch Switcher Logic
-    const switcher = document.getElementById('branch-switcher-container');
-    const select = document.getElementById('branch-context-select');
-    if (userData.available_contexts && userData.available_contexts.length > 1) {
-        if (switcher) switcher.classList.remove('hidden');
-        if (select) {
-            select.innerHTML = '';
-            userData.available_contexts.forEach(ctx => {
-                const opt = document.createElement('option');
-                opt.value = ctx.branch_id;
-                opt.textContent = ctx.branch_name + (ctx.type === 'transferred' ? ' (Transferred)' : '');
-                if (ctx.branch_id === window.activeContextId) opt.selected = true;
-                select.appendChild(opt);
-            });
-
-            if (!select.dataset.listenerAdded) {
-                select.addEventListener('change', (e) => {
-                    const newBranchId = e.target.value;
-                    if (newBranchId !== window.activeContextId) {
-                        window.switchContext(newBranchId);
-                    }
-                });
-                select.dataset.listenerAdded = "true";
-            }
-        }
-    } else {
-        if (switcher) switcher.classList.add('hidden');
+document.getElementById('form-stock-in').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const stockNo = document.getElementById('stock-in-number').value.trim();
+    if (!stockNo) {
+        window.showToast("Please enter the Stock Number.", "error");
+        return;
     }
 
-    let activeRoles = userData.active_roles || [userData.role];
-    if (activeRoles.includes('user') && (activeRoles.includes('user1') || activeRoles.includes('user2') || activeRoles.includes('user1and1'))) {
-        activeRoles = activeRoles.filter(r => r !== 'user');
-    }
-
-    let roleDisplay = "Reserve User";
-    const isActingReserve = userData.role === 'user' && (activeRoles.includes('user1') || activeRoles.includes('user2') || activeRoles.includes('user1and1'));
-    if (activeRoles.includes('admin') || activeRoles.includes('hr') || activeRoles.includes('ho')) {
-        if (activeRoles.includes('admin')) roleDisplay = "Administrator";
-        else if (activeRoles.includes('hr')) roleDisplay = "HR (Human Resources)";
-        else roleDisplay = "HO (Head Office)";
-    } else {
-        const parts = [];
-        if (activeRoles.includes('user1') || activeRoles.includes('user1and1')) parts.push("Entry (Maker)");
-        if (activeRoles.includes('user2')) parts.push("Verifier (Checker)");
-        if (parts.length > 0) {
-            roleDisplay = parts.join(" & ");
-            if (isActingReserve) {
-                roleDisplay += " (Acting)";
-            }
-        }
-    }
-
-    document.getElementById('user-display-role').textContent = roleDisplay;
-
-    if (activeRoles.includes('admin') || activeRoles.includes('hr') || activeRoles.includes('ho')) {
-        const navAdmin = document.getElementById('nav-admin');
-        navAdmin.classList.remove('hidden');
-        const allItems = navAdmin.querySelectorAll('.nav-item');
-        if (activeRoles.includes('ho') && !activeRoles.includes('admin')) {
-            const allowedForHo = ['admin-reports', 'admin-backdate-approval', 'admin-key-holdings', 'admin-weekly-analysis'];
-            allItems.forEach(item => {
-                if (allowedForHo.includes(item.dataset.target)) item.style.display = 'block';
-                else item.style.display = 'none';
-            });
-            switchView('admin-reports');
-        } else {
-            allItems.forEach(item => { item.style.display = 'block'; });
-            switchView('admin-overview');
-        }
-        document.dispatchEvent(new Event('initAdmin'));
-    } else {
-        let defaultView = 'reserve-overview';
-
-        if (activeRoles.includes('user1') || activeRoles.includes('user1and1')) {
-            document.getElementById('nav-user1').classList.remove('hidden');
-            document.dispatchEvent(new Event('initUser1'));
-            defaultView = 'user1-entry';
-        }
-
-        if (activeRoles.includes('user2')) {
-            document.getElementById('nav-user2').classList.remove('hidden');
-            document.dispatchEvent(new Event('initUser2'));
-            if (!activeRoles.includes('user1') && !activeRoles.includes('user1and1')) {
-                defaultView = 'user2-verify';
-            }
-        }
-
-        // Only show Reserve nav if the user has no active transferred roles
-        if (activeRoles.includes('user') && !activeRoles.includes('user1') && !activeRoles.includes('user2') && !activeRoles.includes('user1and1')) {
-            document.getElementById('nav-reserve').classList.remove('hidden');
-            const reserveHeader = document.querySelector('#reserve-overview h2');
-            const reserveMsg = document.querySelector('#reserve-overview header p');
-            if (userData.sent_key_to) {
-                if (reserveHeader) reserveHeader.textContent = "Access Suspended";
-                if (reserveMsg) reserveMsg.innerHTML = `<span class="text-danger"><i class="fa-solid fa-lock"></i> Your key is currently transferred to <strong>${escapeHtml(userData.sent_key_to)}</strong>. You cannot perform your duties until the key is returned.</span>`;
-            } else {
-                if (reserveHeader) reserveHeader.textContent = "Reserve Dashboard";
-                if (reserveMsg) reserveMsg.innerHTML = `You do not have any assigned duties. You can gain temporary access if a key is transferred to you.`;
-            }
-        }
-
-        if (activeRoles.includes('user1') || activeRoles.includes('user2') || activeRoles.includes('user1and1')) {
-            document.dispatchEvent(new Event('initKeyTransfer'));
-        }
-
-        switchView(defaultView);
-    }
-}
-
-function escapeHtml(unsafe) {
-    if (!unsafe) return '';
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-function formatDateDisplay(dateStr) {
-    if (!dateStr) return '';
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-    return dateStr;
-}
-
-// Global A4 Branch Declaration Printing Function
-window.printSingleDeclaration = async (branchId, dateStr) => {
-    if (typeof window.showLoader === 'function') window.showLoader();
+    window.showLoader();
     try {
-        const docId = branchId + "_" + dateStr;
-        const [branchDoc, declDoc] = await Promise.all([
-            window.db.collection("branches").doc(branchId).get(),
-            window.db.collection("declarations").doc(docId).get()
-        ]);
+        await window.db.collection("stock_transactions").add({
+            branch_id: window.currentUserData.branch_id,
+            stock_number: stockNo,
+            type: 'IN',
+            status: 'pending',
+            entered_by: window.currentUser.uid,
+            timestamp: window.activeBackdate ? new Date(window.activeBackdate + 'T12:00:00') : firebase.firestore.FieldValue.serverTimestamp()
+        });
+        window.showToast("Gold IN submitted for verification.", "success");
+        document.getElementById('form-stock-in').reset();
+        loadUser1Entries();
+    } catch (error) {
+        window.showToast(error.message, "error");
+    }
+    window.hideLoader();
+});
 
-        if (!branchDoc.exists) {
-            throw new Error("Branch metadata not found in system.");
+document.getElementById('form-stock-out').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const stockNo = document.getElementById('stock-out-number').value.trim();
+    if (!stockNo) {
+        window.showToast("Please enter the Stock Number.", "error");
+        return;
+    }
+
+    window.showLoader();
+    try {
+        await window.db.collection("stock_transactions").add({
+            branch_id: window.currentUserData.branch_id,
+            stock_number: stockNo,
+            type: 'OUT',
+            status: 'pending',
+            entered_by: window.currentUser.uid,
+            timestamp: window.activeBackdate ? new Date(window.activeBackdate + 'T12:00:00') : firebase.firestore.FieldValue.serverTimestamp()
+        });
+        window.showToast("Gold OUT submitted for verification.", "success");
+        document.getElementById('form-stock-out').reset();
+        loadUser1Entries();
+    } catch (error) {
+        window.showToast(error.message, "error");
+    }
+    window.hideLoader();
+});
+
+document.getElementById('form-branch-totals').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const loanAmountInput = document.getElementById('loan-amount-input').value;
+    const stockAmountInput = document.getElementById('stock-amount-input').value;
+
+    if (loanAmountInput === "" || stockAmountInput === "") {
+        window.showToast("Please enter the value for both Loan and Stock.", "error");
+        return;
+    }
+
+    const loanAmount = parseInt(loanAmountInput) || 0;
+    const stockAmount = parseInt(stockAmountInput) || 0;
+    const branchId = window.currentUserData.branch_id;
+    const dateStr = window.activeBackdate || new Date().toISOString().split('T')[0];
+
+    window.showLoader();
+    try {
+        const existing = await window.db.collection("daily_totals").where("branch_id", "==", branchId).where("date", "==", dateStr).get();
+        if (!existing.empty) {
+            throw new Error("Branch totals already submitted for today.");
         }
-        if (!declDoc.exists) {
-            throw new Error("Declaration document not found for this date.");
+
+        await window.db.collection("daily_totals").add({
+            branch_id: branchId,
+            outstanding_loan: loanAmount,
+            total_stock: stockAmount,
+            date: dateStr,
+            status: 'pending',
+            entered_by: window.currentUser.uid,
+            timestamp: window.activeBackdate ? new Date(window.activeBackdate + 'T12:00:00') : firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        window.showToast("Branch totals submitted for today's report.", "success");
+        document.getElementById('form-branch-totals').reset();
+        loadUser1Entries();
+    } catch (error) {
+        window.showToast(error.message, "error");
+    }
+    window.hideLoader();
+});
+
+document.getElementById('form-cash-entry').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    // Check for empty inputs
+    const cashInputs = document.querySelectorAll('.cash-input');
+    for (let input of cashInputs) {
+        if (input.value === "") {
+            window.showToast("Please enter the value (enter 0 if no cash for this denomination).", "error");
+            return;
         }
+    }
 
-        const branchData = branchDoc.data();
-        const declData = declDoc.data();
+    const { c500, c200, c100, c50, c20, c10, coins, total } = updateCashTotal();
 
-        const signerIds = [declData.user1_id, declData.user2_id].filter(Boolean);
-        const signerDocs = await Promise.all(
-            signerIds.map(userId => window.db.collection("users").doc(userId).get())
-        );
-        const signerDataById = {};
-        signerDocs.forEach((userDoc, index) => {
-            if (userDoc.exists) {
-                signerDataById[signerIds[index]] = userDoc.data();
+    if (total <= 0) {
+        window.showToast("Please enter the cash denominations.", "error");
+        return;
+    }
+
+    window.showLoader();
+    try {
+        await window.db.collection("cash_entries").add({
+            branch_id: window.currentUserData.branch_id,
+            denominations: { '500': c500, '200': c200, '100': c100, '50': c50, '20': c20, '10': c10, 'coins': coins },
+            total_amount: total,
+            status: 'pending',
+            entered_by: window.currentUser.uid,
+            timestamp: window.activeBackdate ? new Date(window.activeBackdate + 'T12:00:00') : firebase.firestore.FieldValue.serverTimestamp()
+        });
+        window.showToast("Cash entry submitted for verification.", "success");
+        document.getElementById('form-cash-entry').reset();
+        updateCashTotal();
+        loadUser1Entries();
+    } catch (error) {
+        window.showToast(error.message, "error");
+    }
+    window.hideLoader();
+});
+
+document.getElementById('form-appraisals').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const appraisedInput = document.getElementById('appraised-amount').value;
+    const notAppraisedInput = document.getElementById('not-appraised-amount').value;
+
+    if (appraisedInput === "" || notAppraisedInput === "") {
+        window.showToast("Please enter the value for both Appraised and Not Appraised packets.", "error");
+        return;
+    }
+
+    const appraised = parseInt(appraisedInput) || 0;
+    const notAppraised = parseInt(notAppraisedInput) || 0;
+
+    window.showLoader();
+    try {
+        await window.db.collection("daily_appraisals").add({
+            branch_id: window.currentUserData.branch_id,
+            appraised: appraised,
+            not_appraised: notAppraised,
+            status: 'pending',
+            entered_by: window.currentUser.uid,
+            timestamp: window.activeBackdate ? new Date(window.activeBackdate + 'T12:00:00') : firebase.firestore.FieldValue.serverTimestamp()
+        });
+        window.showToast("Appraisal counts submitted for verification.", "success");
+        document.getElementById('form-appraisals').reset();
+        loadUser1Entries();
+    } catch (error) {
+        window.showToast(error.message, "error");
+    }
+    window.hideLoader();
+});
+
+document.getElementById('btn-u1-declare').addEventListener('click', async () => {
+    const btnDeclare = document.getElementById('btn-u1-declare');
+    if (btnDeclare.disabled || btnDeclare.textContent.includes('Complete')) {
+        window.showToast("Please complete all required entries (Gold IN, Gold OUT, Cash, Appraisals, Branch Totals) before signing.", "error");
+        return;
+    }
+
+    const key1 = document.getElementById('u1-key-1').value.trim();
+    const key2 = document.getElementById('u1-key-2').value.trim();
+    if (!key1 && !key2) {
+        window.showToast("Please enter at least one Key Number.", "error");
+        return;
+    }
+
+    window.showLoader();
+    try {
+        const date = window.activeBackdate || new Date().toISOString().split('T')[0];
+        const branchId = window.currentUserData.branch_id;
+        const docId = branchId + "_" + date;
+
+        let stockIn = 0;
+        let stockOut = 0;
+        let cashTotal = 0;
+        let appraised = 0;
+        let notAppraised = 0;
+
+        const snapStock = await window.db.collection("stock_transactions").where("branch_id", "==", branchId).get();
+        snapStock.forEach(doc => {
+            const data = doc.data();
+            const txDate = data.timestamp ? data.timestamp.toDate().toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            if (txDate === date) {
+                if (data.type === 'IN') stockIn++;
+                if (data.type === 'OUT') stockOut++;
             }
         });
 
-        const cleanKey = (key) => String(key || '').trim();
-        const normalizeKey = (key) => cleanKey(key).toUpperCase();
-        const uniqueKeys = (keys) => {
-            const seen = new Set();
-            return keys.map(cleanKey).filter(key => {
-                if (!key || key.toUpperCase() === 'N/A') return false;
-                const normalized = normalizeKey(key);
-                if (seen.has(normalized)) return false;
-                seen.add(normalized);
-                return true;
+        const snapCash = await window.db.collection("cash_entries").where("branch_id", "==", branchId).get();
+        const snapCashArray = [];
+        snapCash.forEach(doc => snapCashArray.push(doc.data()));
+        snapCashArray.forEach(data => {
+            const txDate = data.timestamp ? data.timestamp.toDate().toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            if (txDate === date) {
+                cashTotal += data.total_amount || 0;
+            }
+        });
+
+        const snapAppraisals = await window.db.collection("daily_appraisals").where("branch_id", "==", branchId).get();
+        snapAppraisals.forEach(doc => {
+            const data = doc.data();
+            const txDate = data.timestamp ? data.timestamp.toDate().toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            if (txDate === date) {
+                appraised += data.appraised || 0;
+                notAppraised += data.not_appraised || 0;
+            }
+        });
+
+        const branchDoc = await window.db.collection("branches").doc(branchId).get();
+        const bData = branchDoc.exists ? branchDoc.data() : {};
+        let totalStock = bData.total_stock || 0;
+        let outstandingLoan = bData.outstanding_loan || 0;
+
+        const snapTotals = await window.db.collection("daily_totals").where("branch_id", "==", branchId).where("date", "==", date).get();
+        if (!snapTotals.empty) {
+            const tData = snapTotals.docs[0].data();
+            totalStock = tData.total_stock !== undefined ? tData.total_stock : totalStock;
+            outstandingLoan = tData.outstanding_loan !== undefined ? tData.outstanding_loan : outstandingLoan;
+        }
+
+        const is1and1 = window.currentUserData.active_roles ? window.currentUserData.active_roles.includes('user1and1') : window.currentUserData.role === 'user1and1';
+
+        await window.db.collection("declarations").doc(docId).set({
+            branch_id: branchId,
+            user1_id: window.currentUser.uid,
+            user1_name: window.currentUserData.name,
+            user1_status: "Signed",
+            user1_key1: key1,
+            user1_key2: key2,
+            user1_signed_at: window.activeBackdate ? new Date(window.activeBackdate + 'T12:00:00') : new Date(),
+            ...(is1and1 ? {
+                user2_id: "Auto-1and1",
+                user2_name: "System (1 and 1)",
+                user2_status: "Signed",
+                user2_key1: "N/A",
+                user2_key2: "N/A",
+                user2_signed_at: window.activeBackdate ? new Date(window.activeBackdate + 'T12:00:00') : new Date()
+            } : {}),
+            stock_in: stockIn,
+            stock_out: stockOut,
+            cash_total: cashTotal,
+            appraised: appraised,
+            not_appraised: notAppraised,
+            total_stock: totalStock,
+            outstanding_loan: outstandingLoan,
+            date: date,
+            timestamp: window.activeBackdate ? new Date(window.activeBackdate + 'T12:00:00') : firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        document.getElementById('u1-declare-status').innerHTML = '<i class="fa-solid fa-check text-success"></i> Declaration signed digitally.';
+        await window.logAuditEvent("Declaration Signed", "declaration", `End of Day signed for ${date} with keys: ${key1}, ${key2}`);
+        window.showToast("Declaration saved.", "success");
+        loadUser1Entries();
+
+        if (is1and1 && typeof window.printSingleDeclaration === 'function') {
+            window.printSingleDeclaration(branchId, date);
+        }
+    } catch (e) {
+        window.showToast(e.message, "error");
+    }
+    window.hideLoader();
+});
+
+document.addEventListener('initUser2', async () => {
+    const userData = window.currentUserData;
+    const branchId = userData.branch_id ? String(userData.branch_id) : '';
+
+    try {
+        const branchDoc = await window.db.collection("branches").doc(branchId).get();
+        if (branchDoc.exists) {
+            const bData = branchDoc.data();
+            const u2Name = document.getElementById('u2-branch-name');
+            if (u2Name) u2Name.textContent = bData.name || branchId;
+            const u2Stock = document.getElementById('u2-total-stock');
+            if (u2Stock) u2Stock.textContent = bData.total_stock || 0;
+            const u2Loan = document.getElementById('u2-total-loan');
+            if (u2Loan) u2Loan.textContent = "₹" + (bData.outstanding_loan || 0).toLocaleString();
+        } else {
+            const u2Name = document.getElementById('u2-branch-name');
+            if (u2Name) u2Name.textContent = "Unknown Branch";
+        }
+    } catch (err) {
+        console.error("Error fetching branch data:", err);
+    }
+
+    await checkBackdateApproval('user2');
+    await loadPendingVerifications(branchId);
+    checkUser2Declaration();
+
+    const user2ReportsBtn = document.querySelector('[data-target="user2-reports"]');
+    if (user2ReportsBtn) {
+        user2ReportsBtn.addEventListener('click', () => loadBranchReports('table-user2-reports'));
+    }
+});
+
+document.querySelectorAll('[data-target="user2-verify"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const activeBranchId = window.currentUserData && window.currentUserData.branch_id ? String(window.currentUserData.branch_id) : null;
+        if (!activeBranchId) return;
+        await checkBackdateApproval('user2');
+        await loadPendingVerifications(activeBranchId);
+        checkUser2Declaration();
+    });
+});
+
+document.getElementById('btn-u2-exit-backdate').addEventListener('click', async () => {
+    window.activeBackdate = null;
+    document.getElementById('u2-backdate-banner').classList.add('hidden');
+    const activeBranchId = window.currentUserData && window.currentUserData.branch_id ? String(window.currentUserData.branch_id) : null;
+    await loadPendingVerifications(activeBranchId);
+    checkUser2Declaration();
+});
+
+async function checkBackdateApproval(role) {
+    const branchId = window.currentUserData.branch_id ? String(window.currentUserData.branch_id) : '';
+    if (!branchId) return;
+
+    try {
+        const snap = await window.db.collection("backdate_approvals")
+            .where("branch_id", "==", branchId)
+            .where("status", "==", "approved")
+            .get();
+
+        if (!snap.empty) {
+            const data = snap.docs[0].data();
+            window.activeBackdate = data.date;
+            const banner = document.getElementById(role + '-backdate-banner');
+            const text = document.getElementById(role + '-backdate-text');
+            if (banner && text) {
+                text.textContent = `Backdate Mode: ${role === 'user1' ? 'Entries' : 'Verifying'} for ${formatDateDisplay(data.date)}`;
+                banner.classList.remove('hidden');
+            }
+        } else {
+            window.activeBackdate = null;
+            const banner = document.getElementById(role + '-backdate-banner');
+            if (banner) banner.classList.add('hidden');
+        }
+    } catch (err) { console.error("Error checking backdate approval:", err); }
+}
+
+async function checkUser2Declaration() {
+    const branchId = window.currentUserData.branch_id ? String(window.currentUserData.branch_id) : '';
+    const date = window.activeBackdate || new Date().toISOString().split('T')[0];
+    const docId = branchId + "_" + date;
+    try {
+        const decl = await window.db.collection("declarations").doc(docId).get();
+
+        let inCount = document.querySelectorAll('#table-pending-stock-in tbody tr td button').length;
+        let outCount = document.querySelectorAll('#table-pending-stock-out tbody tr td button').length;
+        let cashCount = document.querySelectorAll('#table-pending-cash tbody tr td button').length;
+        let appCount = document.querySelectorAll('#table-pending-appraisals tbody tr td button').length;
+        let totCount = document.querySelectorAll('#table-pending-totals tbody tr td button').length;
+        let totalPending = inCount + outCount + cashCount + appCount + totCount;
+
+        if (decl.exists && decl.data().user2_status === 'Signed') {
+            document.getElementById('btn-u2-declare').disabled = true;
+            document.getElementById('btn-u2-declare').textContent = 'Signed';
+            document.getElementById('u2-declare-status').innerHTML = `<i class="fa-solid fa-check text-success"></i> Declaration already signed for ${formatDateDisplay(date)}.`;
+        } else if (!decl.exists || decl.data().user1_status !== 'Signed') {
+            document.getElementById('btn-u2-declare').disabled = true;
+            document.getElementById('btn-u2-declare').textContent = 'Waiting for Maker';
+            document.getElementById('u2-declare-status').innerHTML = '<span class="text-warning"><i class="fa-solid fa-triangle-exclamation"></i> Maker must complete and sign their declaration first.</span>';
+        } else if (totalPending > 0) {
+            document.getElementById('btn-u2-declare').disabled = true;
+            document.getElementById('btn-u2-declare').textContent = 'Pending Approvals';
+            document.getElementById('u2-declare-status').innerHTML = '<span class="text-warning"><i class="fa-solid fa-triangle-exclamation"></i> You must approve all pending entries before signing.</span>';
+        } else {
+            document.getElementById('btn-u2-declare').disabled = false;
+            document.getElementById('btn-u2-declare').textContent = 'Sign Declaration';
+            document.getElementById('u2-declare-status').innerHTML = '';
+        }
+    } catch (e) { console.error("Error checking declaration:", e); }
+}
+
+async function loadPendingVerifications(branchId) {
+    try {
+        branchId = String(branchId || '');
+        const now = new Date();
+        let startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        let dateStr = now.toISOString().split('T')[0];
+
+        if (window.activeBackdate) {
+            dateStr = window.activeBackdate;
+            const [y, m, d] = dateStr.split('-').map(Number);
+            startOfDay = new Date(y, m - 1, d);
+        }
+
+        const dateBadge = document.getElementById('u2-active-date');
+        if (dateBadge) dateBadge.textContent = formatDateDisplay(dateStr);
+
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        let todayAppraised = 0;
+        let todayPending = 0;
+
+        const snapAllAppraisals = await window.db.collection("daily_appraisals").where("branch_id", "==", branchId).get();
+        snapAllAppraisals.forEach(doc => {
+            const data = doc.data();
+            let txDate = new Date();
+            if (data.timestamp && typeof data.timestamp.toDate === 'function') {
+                txDate = data.timestamp.toDate();
+            } else if (data.timestamp) {
+                txDate = new Date(data.timestamp);
+            }
+            if (txDate >= startOfDay && txDate <= endOfDay && data.status === 'approved') {
+                todayAppraised += data.appraised || 0;
+                todayPending += data.not_appraised || 0;
+            }
+        });
+
+        const elAppraised = document.getElementById('u2-today-appraised');
+        const elPending = document.getElementById('u2-today-pending');
+        if (elAppraised) elAppraised.textContent = todayAppraised;
+        if (elPending) elPending.textContent = todayPending;
+
+        const snapStock = await window.db.collection("stock_transactions").where("branch_id", "==", branchId).get();
+        const tbodyStockIn = document.querySelector('#table-pending-stock-in tbody');
+        const tbodyStockOut = document.querySelector('#table-pending-stock-out tbody');
+
+        if (tbodyStockIn) tbodyStockIn.innerHTML = '';
+        if (tbodyStockOut) tbodyStockOut.innerHTML = '';
+
+        let inCount = 0;
+        let outCount = 0;
+
+        snapStock.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.status !== 'pending') return;
+
+            let txDate = new Date();
+            if (data.timestamp && typeof data.timestamp.toDate === 'function') txDate = data.timestamp.toDate();
+            else if (data.timestamp) txDate = new Date(data.timestamp);
+
+            if (txDate < startOfDay || txDate > endOfDay) return;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="font-size: 1em; font-weight: bold; color: #ffffffff;">${data.stock_number}</td>
+                <td><button class="btn btn-primary btn-sm" onclick="approveStock('${docSnap.id}', '${data.type}', '${branchId}')"><i class="fa-solid fa-stamp"></i> Approve</button></td>
+            `;
+            if (data.type === 'IN') {
+                if (tbodyStockIn) tbodyStockIn.appendChild(tr);
+                inCount++;
+            } else if (data.type === 'OUT') {
+                if (tbodyStockOut) tbodyStockOut.appendChild(tr);
+                outCount++;
+            }
+        });
+
+        if (inCount === 0 && tbodyStockIn) {
+            tbodyStockIn.innerHTML = `<tr><td colspan="2" class="text-center text-muted">No pending Stock IN</td></tr>`;
+        }
+        if (outCount === 0 && tbodyStockOut) {
+            tbodyStockOut.innerHTML = `<tr><td colspan="2" class="text-center text-muted">No pending Stock OUT</td></tr>`;
+        }
+
+        const snapCash = await window.db.collection("cash_entries").where("branch_id", "==", branchId).get();
+        const tbodyCash = document.querySelector('#table-pending-cash tbody');
+        if (tbodyCash) {
+            tbodyCash.innerHTML = '';
+            snapCash.forEach(docSnap => {
+                const data = docSnap.data();
+                if (data.status !== 'pending') return;
+
+                let txDate = new Date();
+                if (data.timestamp && typeof data.timestamp.toDate === 'function') txDate = data.timestamp.toDate();
+                else if (data.timestamp) txDate = new Date(data.timestamp);
+
+                if (txDate < startOfDay || txDate > endOfDay) return;
+
+                const tr = document.createElement('tr');
+                const denoms = data.denominations || {};
+                const denomText = `500x${denoms['500'] || 0}, ` +
+                    `200x${denoms['200'] || 0}, ` +
+                    `100x${denoms['100'] || 0}, ` +
+                    `50x${denoms['50'] || 0}, ` +
+                    `20x${denoms['20'] || 0}, ` +
+                    `10x${denoms['10'] || 0}, ` +
+                    `Coins: ₹${denoms['coins'] || 0}`;
+
+                tr.innerHTML = `
+                    <td style="font-size: 1em; font-weight: bold; color: #ffffffff;">₹${data.total_amount.toLocaleString()}</td>
+                    <td class="text-muted" style="font-size: 0.85em; max-width: 250px; white-space: normal;">${denomText}</td>
+                    <td><button class="btn btn-primary btn-sm" onclick="approveCash('${docSnap.id}', ${data.total_amount}, '${branchId}')"><i class="fa-solid fa-stamp"></i> Approve</button></td>
+                `;
+                tbodyCash.appendChild(tr);
             });
-        };
-        const getSignedKeys = (primaryKey, secondaryKey, userId, fallbackKey1, fallbackKey2) => {
-            const userData = signerDataById[userId] || {};
-            const keys = uniqueKeys([primaryKey, secondaryKey, userData.key1, userData.key2]);
-            const fallbackKeys = uniqueKeys([fallbackKey1, fallbackKey2]);
-            return {
-                key1: keys[0] || fallbackKeys[0] || "N/A",
-                key2: keys[1] || fallbackKeys[1] || "N/A",
-                list: keys
-            };
-        };
-        const makerKeys = getSignedKeys(declData.user1_key1, declData.user1_key2, declData.user1_id, branchData.key1, branchData.key2);
-        const checkerKeys = getSignedKeys(declData.user2_key1, declData.user2_key2, declData.user2_id, branchData.key1, branchData.key2);
-        const signedKeysById = {
-            [declData.user1_id]: makerKeys.list,
-            [declData.user2_id]: checkerKeys.list
-        };
+        }
 
-        // Fetch key transfer positions for each signer to determine physical key location
-        const keyPositionById = {};
-        await Promise.all(signerIds.map(async (userId) => {
-            const uData = signerDataById[userId] || {};
-            const signerName = uData.name || (userId === declData.user1_id ? declData.user1_name : declData.user2_name) || 'Holder';
-            const signedKeys = signedKeysById[userId] || [];
-            const fallbackAssignedKeys = uniqueKeys([uData.key1, uData.key2]);
-            const knownKeys = signedKeys.length > 0 ? signedKeys : fallbackAssignedKeys;
-            const positions = [];
+        const snapAppraisals = await window.db.collection("daily_appraisals").where("branch_id", "==", branchId).get();
+        const tbodyAppraisals = document.querySelector('#table-pending-appraisals tbody');
+        if (tbodyAppraisals) {
+            tbodyAppraisals.innerHTML = '';
+            snapAppraisals.forEach(docSnap => {
+                const data = docSnap.data();
+                if (data.status !== 'pending') return;
 
-            // Check if any of user's own keys are currently lent out
-            const sentSnap = await window.db.collection('key_transfers')
-                .where('sender_id', '==', userId)
-                .where('status', '==', 'accepted')
-                .where('transfer_type', '==', 'temporary')
-                .get();
-            const lentKeys = {};
-            sentSnap.forEach(doc => {
-                const d = doc.data();
-                lentKeys[normalizeKey(d.key_number)] = d.receiver_name || 'Unknown';
+                let txDate = new Date();
+                if (data.timestamp && typeof data.timestamp.toDate === 'function') txDate = data.timestamp.toDate();
+                else if (data.timestamp) txDate = new Date(data.timestamp);
+
+                if (txDate < startOfDay || txDate > endOfDay) return;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-size: 1em; font-weight: bold; color: #ffffffff;">${data.appraised}</td>
+                    <td style="font-size: 1em; font-weight: bold; color: #ffffffff;">${data.not_appraised}</td>
+                    <td><button class="btn btn-primary btn-sm" onclick="approveAppraisal('${docSnap.id}', '${branchId}')"><i class="fa-solid fa-stamp"></i> Approve</button></td>
+                `;
+                tbodyAppraisals.appendChild(tr);
             });
+        }
 
-            // Check if user is holding a key received via temporary transfer
-            const receivedSnap = await window.db.collection('key_transfers')
-                .where('receiver_id', '==', userId)
-                .where('status', '==', 'accepted')
-                .where('transfer_type', '==', 'temporary')
-                .get();
-            const heldKeys = {};
-            receivedSnap.forEach(doc => {
-                const d = doc.data();
-                const keyNumber = cleanKey(d.key_number);
-                if (keyNumber) {
-                    heldKeys[normalizeKey(keyNumber)] = { key: keyNumber, from: d.sender_name || 'Unknown' };
-                }
+        const snapTotals = await window.db.collection("daily_totals").where("branch_id", "==", branchId).get();
+        const tbodyTotals = document.querySelector('#table-pending-totals tbody');
+        if (tbodyTotals) {
+            tbodyTotals.innerHTML = '';
+            snapTotals.forEach(docSnap => {
+                const data = docSnap.data();
+                if (data.status !== 'pending') return;
+
+                let txDate = new Date();
+                if (data.timestamp && typeof data.timestamp.toDate === 'function') txDate = data.timestamp.toDate();
+                else if (data.timestamp) txDate = new Date(data.timestamp);
+
+                if (txDate < startOfDay || txDate > endOfDay) return;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-size: 1em; font-weight: bold; color: #ffffffff;">₹${data.outstanding_loan.toLocaleString()}</td>
+                    <td style="font-size: 1em; font-weight: bold; color: #ffffffff;">${data.total_stock}</td>
+                    <td><button class="btn btn-primary btn-sm" onclick="approveTotals('${docSnap.id}', '${branchId}')"><i class="fa-solid fa-stamp"></i> Approve</button></td>
+                `;
+                tbodyTotals.appendChild(tr);
             });
+        }
+    } catch (error) {
+        console.error("Error in loadPendingVerifications:", error);
+    }
+}
 
-            knownKeys.forEach(key => {
-                const normalized = normalizeKey(key);
-                if (heldKeys[normalized]) {
-                    positions.push(`${heldKeys[normalized].key} (With ${signerName}, temp. from ${heldKeys[normalized].from})`);
-                } else if (!lentKeys[normalized]) {
-                    positions.push(`${key} (With ${signerName})`);
-                }
-            });
+window.approveStock = async (txId, type, branchId) => {
+    window.showLoader();
+    try {
+        await window.db.collection("stock_transactions").doc(txId).update({ status: 'approved', verified_by: window.currentUser.uid });
+        const inc = type === 'IN' ? 1 : -1;
+        await window.db.collection("branches").doc(branchId).update({ total_stock: firebase.firestore.FieldValue.increment(inc) });
+        window.showToast("Stock entry approved.", "success");
+        await loadPendingVerifications(branchId);
+        checkUser2Declaration();
+    } catch (e) { window.showToast(e.message, "error"); }
+    window.hideLoader();
+};
 
-            Object.values(heldKeys).forEach(hk => {
-                if (!knownKeys.some(key => normalizeKey(key) === normalizeKey(hk.key))) {
-                    positions.push(`${hk.key} (With ${signerName}, temp. from ${hk.from})`);
-                }
-            });
+window.approveCash = async (txId, amount, branchId) => {
+    window.showLoader();
+    try {
+        await window.db.collection("cash_entries").doc(txId).update({ status: 'approved', verified_by: window.currentUser.uid });
+        await window.db.collection("branches").doc(branchId).update({ physical_cash: amount });
+        window.showToast("Cash entry approved.", "success");
+        await loadPendingVerifications(branchId);
+        checkUser2Declaration();
+    } catch (e) { window.showToast(e.message, "error"); }
+    window.hideLoader();
+};
 
-            keyPositionById[userId] = positions.length > 0 ? positions.join(', ') : 'No key currently held';
-        }));
+window.approveAppraisal = async (txId, branchId) => {
+    window.showLoader();
+    try {
+        await window.db.collection("daily_appraisals").doc(txId).update({ status: 'approved', verified_by: window.currentUser.uid });
+        window.showToast("Appraisal entry approved.", "success");
+        await loadPendingVerifications(branchId);
+        checkUser2Declaration();
+    } catch (e) { window.showToast(e.message, "error"); }
+    window.hideLoader();
+};
 
-        // Fetch transactions for the day summary
-        const [stockSnap, cashSnap, appraisalSnap] = await Promise.all([
-            window.db.collection("stock_transactions").where("branch_id", "==", branchId).get(),
-            window.db.collection("cash_entries").where("branch_id", "==", branchId).get(),
-            window.db.collection("daily_appraisals").where("branch_id", "==", branchId).get()
+window.approveTotals = async (txId, branchId) => {
+    window.showLoader();
+    try {
+        await window.db.collection("daily_totals").doc(txId).update({ status: 'approved', verified_by: window.currentUser.uid });
+        window.showToast("Branch totals approved.", "success");
+        await loadPendingVerifications(branchId);
+        checkUser2Declaration();
+    } catch (e) { window.showToast(e.message, "error"); }
+    window.hideLoader();
+};
+
+document.getElementById('btn-u2-declare').addEventListener('click', async () => {
+    const key1 = document.getElementById('u2-key-1').value.trim();
+    const key2 = document.getElementById('u2-key-2').value.trim();
+    if (!key1 && !key2) {
+        window.showToast("Please enter at least one Key Number.", "error");
+        return;
+    }
+
+    window.showLoader();
+    try {
+        const date = window.activeBackdate || new Date().toISOString().split('T')[0];
+        const branchId = window.currentUserData.branch_id;
+        const docId = branchId + "_" + date;
+        await window.db.collection("declarations").doc(docId).set({
+            branch_id: branchId,
+            user2_id: window.currentUser.uid,
+            user2_name: window.currentUserData.name,
+            user2_status: "Signed",
+            user2_key1: key1,
+            user2_key2: key2,
+            user2_signed_at: window.activeBackdate ? new Date(window.activeBackdate + 'T12:00:00') : new Date(),
+            date: date,
+            timestamp: window.activeBackdate ? new Date(window.activeBackdate + 'T12:00:00') : firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        if (window.activeBackdate) {
+            // Mark approval as used
+            await window.db.collection("backdate_approvals").doc(branchId + "_" + window.activeBackdate).update({ status: 'used' });
+            window.activeBackdate = null;
+            document.getElementById('u2-backdate-banner').classList.add('hidden');
+        }
+
+        document.getElementById('u2-declare-status').innerHTML = '<i class="fa-solid fa-check text-success"></i> Declaration signed digitally.';
+        window.showToast("Declaration completed and signed.", "success");
+        checkUser2Declaration();
+    } catch (e) {
+        window.showToast(e.message, "error");
+    }
+    window.hideLoader();
+});
+
+async function loadBranchReports(tableId, filterFrom = null, filterTo = null) {
+    window.showLoader();
+    try {
+        const currentUid = window.currentUser.uid;
+        const [snap1, snap2] = await Promise.all([
+            window.db.collection("declarations").where("user1_id", "==", currentUid).get(),
+            window.db.collection("declarations").where("user2_id", "==", currentUid).get()
         ]);
 
-        const getDocDateKey = (data) => {
-            if (!data || !data.timestamp || typeof data.timestamp.toDate !== 'function') {
-                return data && typeof data.date === 'string' ? data.date : '';
-            }
-            const dateValue = data.timestamp.toDate();
+        const uniqueDocsMap = new Map();
+        snap1.forEach(d => uniqueDocsMap.set(d.id, d.data()));
+        snap2.forEach(d => uniqueDocsMap.set(d.id, d.data()));
+        let docs = Array.from(uniqueDocsMap.values());
+
+        if (filterFrom) {
+            docs = docs.filter(d => d.date >= filterFrom);
+        }
+        if (filterTo) {
+            docs = docs.filter(d => d.date <= filterTo);
+        }
+
+        docs.sort((a, b) => b.date.localeCompare(a.date));
+
+        const tbody = document.querySelector(`#${tableId} tbody`);
+        tbody.innerHTML = '';
+
+        const branchSnap = await window.db.collection("branches").get();
+        const branchMap = {};
+        const branchDataMap = {};
+        branchSnap.forEach(b => {
+            branchMap[b.id] = b.data().name || b.id;
+            branchDataMap[b.id] = b.data();
+        });
+
+        const reportSectionId = tableId === 'table-user2-reports' ? 'user2-reports' : 'user1-reports';
+        const summaryText = docs.length
+            ? `My Detailed Logs | ${docs.length} report${docs.length === 1 ? '' : 's'}`
+            : `My Detailed Logs | No reports available`;
+        window.updateReportHeader(reportSectionId, summaryText);
+
+        if (docs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="13" style="text-align:center; padding: 20px; color: #888;">No reports available.</td></tr>';
+            window.hideLoader();
+            return;
+        }
+
+        const escapeHtml = (value) => String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+        const formatLocalDateKey = (dateValue) => {
+            if (!(dateValue instanceof Date) || Number.isNaN(dateValue.getTime())) return '';
             const year = dateValue.getFullYear();
             const month = String(dateValue.getMonth() + 1).padStart(2, '0');
             const day = String(dateValue.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         };
 
-        const stockInEntries = [];
-        const stockOutEntries = [];
-        stockSnap.forEach(d => {
-            const entry = d.data();
-            if (getDocDateKey(entry) !== dateStr) return;
-            const stockNum = entry.stock_number || 'Unknown';
-            if (entry.type === 'IN') stockInEntries.push(stockNum);
-            if (entry.type === 'OUT') stockOutEntries.push(stockNum);
-        });
-
-        const isMaker1and1 = declData.user2_id === "Auto-1and1";
-
-        let approvedCashTotal = declData.cash_total || 0;
-        let denoms = { '500': 0, '200': 0, '100': 0, '50': 0, '20': 0, '10': 0, 'coins': 0 };
-        cashSnap.forEach(d => {
-            const entry = d.data();
-            if (getDocDateKey(entry) !== dateStr) return;
-            if (entry.status === 'approved' || (isMaker1and1 && entry.status === 'pending')) {
-                approvedCashTotal = entry.total_amount || 0;
-                denoms = entry.denominations || denoms;
+        const getDocDateKey = (data) => {
+            if (!data || !data.timestamp || typeof data.timestamp.toDate !== 'function') {
+                return data && typeof data.date === 'string' ? data.date : '';
             }
-        });
-
-        let appraised = declData.appraised || 0;
-        let notAppraised = declData.not_appraised || 0;
-        let appraisalStatus = 'Pending Approval';
-        appraisalSnap.forEach(d => {
-            const entry = d.data();
-            if (getDocDateKey(entry) !== dateStr) return;
-            if (entry.status === 'approved' || (isMaker1and1 && entry.status === 'pending')) {
-                appraised = entry.appraised || 0;
-                notAppraised = entry.not_appraised || 0;
-                appraisalStatus = 'Approved';
-            }
-        });
-
-        const totalStockInLocker = declData.total_stock !== undefined ? declData.total_stock : (branchData.total_stock || 0);
-        const outstandingLoan = declData.outstanding_loan !== undefined ? declData.outstanding_loan : (branchData.outstanding_loan || 0);
-
-        const formatCurrency = (val) => `₹${Number(val || 0).toLocaleString('en-IN')}`;
-        const formatSignatureTime = (timestampVal) => {
-            if (!timestampVal) return '';
-            try {
-                if (typeof timestampVal.toDate === 'function') {
-                    return timestampVal.toDate().toLocaleString('en-GB', { hour12: true });
-                }
-                if (timestampVal instanceof Date) {
-                    return timestampVal.toLocaleString('en-GB', { hour12: true });
-                }
-                return new Date(timestampVal).toLocaleString('en-GB', { hour12: true });
-            } catch (e) {
-                return 'N/A';
-            }
+            return formatLocalDateKey(data.timestamp.toDate());
         };
 
-        const u1Time = declData.user1_signed_at ? formatSignatureTime(declData.user1_signed_at) : (declData.timestamp ? formatSignatureTime(declData.timestamp) : '');
-        const u2Time = declData.user2_signed_at ? formatSignatureTime(declData.user2_signed_at) : (declData.timestamp ? formatSignatureTime(declData.timestamp) : '');
+        const formatCurrencyValue = (amount) => `₹${Number(amount || 0).toLocaleString()}`;
+        const formatStockNumbers = (entries) => {
+            if (!entries || !entries.length) return '-';
+            return entries.map(entry => escapeHtml(entry.stockNumber || 'Unknown')).join(', ');
+        };
 
-        const makerKeyPosition = keyPositionById[declData.user1_id] || makerKeys.key1;
-        const checkerKeyPosition = keyPositionById[declData.user2_id] || checkerKeys.key1;
+        const getDeclarationDaySummary = async (specificBranchId, date, declarationData = null) => {
+            const summary = {
+                stockInEntries: [],
+                stockOutEntries: [],
+                cashEntries: [],
+                appraisalEntries: [],
+                approvedCashTotal: 0,
+                approvedAppraised: 0,
+                approvedNotAppraised: 0
+            };
 
+            const isMaker1and1 = declarationData && declarationData.user2_id === "Auto-1and1";
 
-        const printContainer = document.getElementById('branch-declaration-print');
-        if (printContainer) {
-            printContainer.innerHTML = `
-                <div class="print-doc-container">
-                    <div class="print-header">
-                        <h1>${escapeHtml(branchData.company || "GOLD VAULT")}</h1>
-                        <h2>Declaration of Branch</h2>
-                        <p>Branch Name: <strong>${escapeHtml(branchData.name || "N/A")}</strong> | Locker Position: <strong>${escapeHtml(branchData.locker_number || "N/A")}</strong></p>
-                        <p>Report Date: <strong>${formatDateDisplay(dateStr)}</strong> | Printed on: <strong>${new Date().toLocaleString('en-GB', { hour12: true })}</strong></p>
-                    </div>
+            const [stockSnap, cashSnap, appraisalSnap] = await Promise.all([
+                window.db.collection("stock_transactions").where("branch_id", "==", specificBranchId).get(),
+                window.db.collection("cash_entries").where("branch_id", "==", specificBranchId).get(),
+                window.db.collection("daily_appraisals").where("branch_id", "==", specificBranchId).get()
+            ]);
 
-                    <div class="print-meta-grid">
-                        <div class="print-meta-item">
-                           <strong>Declaration Date:</strong> ${formatDateDisplay(dateStr)}<br> 
-                        </div>
-                        <div class="print-meta-item" style="text-align: right;">
-                            <strong>Status:</strong> COMPLETE
-                        </div>
-                    </div>
+            stockSnap.forEach(docSnap => {
+                const entry = docSnap.data();
+                if (getDocDateKey(entry) !== date) return;
+                const stockEntry = {
+                    stockNumber: entry.stock_number || 'Unknown',
+                    status: entry.status || 'pending'
+                };
+                if (entry.type === 'IN') summary.stockInEntries.push(stockEntry);
+                if (entry.type === 'OUT') summary.stockOutEntries.push(stockEntry);
+            });
 
-                    <div class="print-section-title">Locker Position & Totals</div>
-                    <div class="print-totals-grid">
-                        <div class="print-total-card">
-                            <span>Total Cash Balance</span>
-                            <strong>${formatCurrency(approvedCashTotal)}</strong>
-                        </div>
-                        <div class="print-total-card">
-                            <span>Total No.of Stock</span>
-                            <strong>${totalStockInLocker}</strong>
-                        </div>
-                        <div class="print-total-card">
-                            <span>Gold Loan Outstanding</span>
-                            <strong>${formatCurrency(outstandingLoan)}</strong>
-                        </div>
-                        <div class="print-total-card">
-                            <span>Not Appraised Packets</span>
-                            <strong>${notAppraised}</strong>
-                        </div>
-                    </div>
+            cashSnap.forEach(docSnap => {
+                const entry = docSnap.data();
+                if (getDocDateKey(entry) !== date) return;
+                const totalAmount = entry.total_amount || 0;
+                summary.cashEntries.push({
+                    totalAmount,
+                    denominations: entry.denominations || {},
+                    status: entry.status || 'pending'
+                });
+                summary.approvedCashTotal += totalAmount;
+            });
 
-                    <div class="print-section-title">Daily Stock Transactions</div>
-                    <table class="print-data-table">
-                        <thead>
-                           <tr>
-                               <th style="width: 50%;">Stock IN</th>
-                               <th style="width: 50%;">Stock OUT</th>
-                           </tr>
-                        </thead>
-                        <tbody>
-                           <tr>
-                               <td>${stockInEntries.length > 0 ? stockInEntries.map(s => `<code>${escapeHtml(s)}</code>`).join(', ') : 'No stock items added (IN).'}</td>
-                               <td>${stockOutEntries.length > 0 ? stockOutEntries.map(s => `<code>${escapeHtml(s)}</code>`).join(', ') : 'No stock items removed (OUT).'}</td>
-                           </tr>
-                        </tbody>
-                    </table>
+            appraisalSnap.forEach(docSnap => {
+                const entry = docSnap.data();
+                if (getDocDateKey(entry) !== date) return;
+                const appraised = entry.appraised || 0;
+                const notAppraised = entry.not_appraised || 0;
+                summary.appraisalEntries.push({
+                    appraised,
+                    notAppraised,
+                    status: entry.status || 'pending'
+                });
+                summary.approvedAppraised += appraised;
+                summary.approvedNotAppraised += notAppraised;
+            });
 
-                    <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; margin-top: 15px;">
-                        <div>
-                            <div class="print-section-title">Cash Denomination</div>
-                            <table class="print-data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Denomination</th>
-                                        <th>Count</th>
-                                        <th>Value</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>₹500</td>
-                                        <td>${denoms['500'] || 0}</td>
-                                        <td>${formatCurrency((denoms['500'] || 0) * 500)}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>₹200</td>
-                                        <td>${denoms['200'] || 0}</td>
-                                        <td>${formatCurrency((denoms['200'] || 0) * 200)}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>₹100</td>
-                                        <td>${denoms['100'] || 0}</td>
-                                        <td>${formatCurrency((denoms['100'] || 0) * 100)}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>₹50</td>
-                                        <td>${denoms['50'] || 0}</td>
-                                        <td>${formatCurrency((denoms['50'] || 0) * 50)}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>₹20</td>
-                                        <td>${denoms['20'] || 0}</td>
-                                        <td>${formatCurrency((denoms['20'] || 0) * 20)}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>₹10</td>
-                                        <td>${denoms['10'] || 0}</td>
-                                        <td>${formatCurrency((denoms['10'] || 0) * 10)}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Coins</td>
-                                        <td>-</td>
-                                        <td>${formatCurrency(denoms['coins'] || 0)}</td>
-                                    </tr>
-                                    <tr style="font-weight: bold; background-color: #f3f4f6;">
-                                        <td>Total Cash</td>
-                                        <td>-</td>
-                                        <td>${formatCurrency(approvedCashTotal)}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+            return summary;
+        };
 
-                        <div>
-                            <div class="print-section-title">Appraisals Summary</div>
-                            <table class="print-data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Category</th>
-                                        <th>Count</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Appraised Packets</td>
-                                        <td>${appraised}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Not Appraised Packets</td>
-                                        <td>${notAppraised}</td>
-                                    </tr>
-                                    <tr style="font-weight: bold; background-color: #f3f4f6;">
-                                        <td>Total</td>
-                                        <td>${appraised + notAppraised}</td>
-                                    </tr>
-                                   
-                                </tbody>
-                            </table>
+        const rows = await Promise.all(docs.map(async (data) => {
+            const rowBranchId = data.branch_id;
+            const branchName = branchMap[rowBranchId] || "Unknown";
+            const rowBranchData = branchDataMap[rowBranchId] || {};
 
-                            <div style="margin-top: 15px; color: red; border: 1px dashed #000000; padding: 10px; font-size: 10px; line-height: 1.4;">
-                                <strong>Locker Declaration Compliance:</strong><br>
-                                This branch declaration is signed digitally by key holder. According to company policy, branch activities are not closed until both Maker and Checker physical key verifications are completed.
-                           </div>
-                        </div>
-                    </div>
+            const daySummary = await getDeclarationDaySummary(rowBranchId, data.date, data);
 
-                    <div class="print-section-title">Digital Verification & Signatures</div>
-                    <div class="print-signatures-grid">
-                        <div class="print-signature-box complete">
-                            <span class="print-signature-badge">Maker Signed</span>
-                            <div class="box-title">Maker (User 1) Declaration</div>
-                            <div class="verification-details">
-                               <p><strong>Verified By:</strong> ${escapeHtml(declData.user1_name || "Maker")}</p>
-                                <p><strong>Assigned Key </strong> ${escapeHtml(makerKeys.key2)}</p>
-                               <p><strong>Signed At:</strong> ${u1Time || 'N/A'}</p>
-                            </div>
-                            <div class="signature-line">
-                                Digitally Certified by Maker
-                            </div>
-                        </div>
+            const totalsSnap = await window.db.collection("daily_totals")
+                .where("branch_id", "==", rowBranchId)
+                .where("date", "==", data.date)
+                .get();
 
-                        <div class="print-signature-box complete">
-                            <span class="print-signature-badge">Checker Signed</span>
-                            <div class="box-title">Checker (User 2) Verification</div>
-                            <div class="verification-details">
-                               <p><strong>Verified By:</strong> ${escapeHtml(declData.user2_name || "Checker")}</p>
-                                <p><strong>Assigned Key </strong> ${escapeHtml(checkerKeys.key2)}</p>
-                               <p><strong>Signed At:</strong> ${u2Time || 'N/A'}</p>
-                            </div>
-                            <div class="signature-line">
-                                Digitally Certified by Checker
-                            </div>
-                        </div>
-                    </div>
+            let totalStockInLocker = data.total_stock !== undefined ? data.total_stock : (rowBranchData.total_stock || 0);
+            let outstandingLoan = data.outstanding_loan !== undefined ? data.outstanding_loan : (rowBranchData.outstanding_loan || 0);
 
-                    <div class="print-section-title">Physical Signatures</div>
-                    <div class="print-signatures-grid" style="margin-top: 10px;">
-                        <div class="print-signature-box" style="height: 100px; display: flex; flex-direction: column; justify-content: flex-end;">
-                            <div class="signature-line" style="margin-top: 0;">
-                                ${escapeHtml(declData.user1_name)} Physical Signature
-                            </div>
-                        </div>
-                        <div class="print-signature-box" style="height: 100px; display: flex; flex-direction: column; justify-content: flex-end;">
-                            <div class="signature-line" style="margin-top: 0;">
-                                 ${escapeHtml(declData.user2_name)} Physical Signature
-                            </div>
-                        </div>
-                    </div>
+            if (!totalsSnap.empty) {
+                const tData = totalsSnap.docs[0].data();
+                totalStockInLocker = tData.total_stock !== undefined ? tData.total_stock : totalStockInLocker;
+                outstandingLoan = tData.outstanding_loan !== undefined ? tData.outstanding_loan : outstandingLoan;
+            }
 
-                    <div class="print-footer">
-                    <p>Branch Name: <strong>${escapeHtml(branchData.name || "N/A")}</strong> | Locker Position: <strong>${escapeHtml(branchData.locker_number || "N/A")}</strong></p>
-                        <p>Report Date: <strong>${formatDateDisplay(dateStr)}</strong> | Generated: <strong>${new Date().toLocaleString('en-GB', { hour12: true })}</strong></p>
-                       
-                    </div>
-                </div>
+            const isComplete = (data.user1_status === 'Signed' && data.user2_status === 'Signed');
+            const finalStatus = isComplete
+                ? '<span class="status-badge status-approved"><i class="fa-solid fa-check"></i></span>'
+                : '<span class="status-badge status-pending"><i class="fa-solid fa-exclamation-triangle"></i></span>';
+            const makerInfo = data.user1_status === 'Signed' ? escapeHtml(data.user1_name || 'Signed') : '<i class="fa-solid fa-exclamation-triangle"></i>';
+            const checkerInfo = data.user2_status === 'Signed' ? escapeHtml(data.user2_name || 'Signed') : '<i class="fa-solid fa-exclamation-triangle"></i>';
+
+            let printBtnHtml = '';
+            const isAdmin = window.currentUserData.role === 'admin';
+
+            if (!isComplete) {
+                printBtnHtml = `<button class="btn btn-secondary btn-sm" disabled style="padding: 4px 10px; font-size: 12px; opacity: 0.5; cursor: not-allowed; display: inline-flex; align-items: center; gap: 4px;" title="Pending Maker & Checker signatures"><i class="fa-solid fa-print"></i> Print</button>`;
+            } else if (data.print_taken && !isAdmin) {
+                printBtnHtml = `<span class="status-badge" style="background: rgba(107, 114, 128, 0.2); color: #6b7280; font-size: 11px;"><i class="fa-solid fa-check"></i> Printed</span>`;
+            } else {
+                printBtnHtml = `<button class="btn btn-primary btn-sm" onclick="window.printSingleDeclaration('${rowBranchId}', '${data.date}')" style="padding: 4px 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-print"></i> Print</button>`;
+            }
+
+            return `
+                <tr>
+                    <td style="vertical-align: top;"><strong>${escapeHtml(formatDateDisplay(data.date) || 'N/A')}</strong></td>
+                    <td style="vertical-align: top;"><strong>${escapeHtml(branchName)}</strong></td>
+                    <td>${makerInfo}</td>
+                    <td>${checkerInfo}</td>
+                    <td>${formatStockNumbers(daySummary.stockInEntries)}</td>
+                    <td>${formatStockNumbers(daySummary.stockOutEntries)}</td>
+                    <td>${formatCurrencyValue(daySummary.approvedCashTotal)}</td>
+                    <td>${daySummary.approvedAppraised}</td>
+                    <td>${daySummary.approvedNotAppraised}</td>
+                    <td>${totalStockInLocker}</td>
+                    <td>${formatCurrencyValue(outstandingLoan)}</td>
+                    <td style="text-align: center;">${finalStatus}</td>
+                    <td style="text-align: center;">${printBtnHtml}</td>
+                </tr>
             `;
-        }
+        }));
 
-        document.body.setAttribute('data-print-section', 'branch-declaration-print');
-        window.print();
-
-        if (!declData.print_taken && window.currentUserData && window.currentUserData.role !== 'admin' && window.currentUserData.role !== 'hr' && window.currentUserData.role !== 'ho') {
-            await window.db.collection("declarations").doc(docId).update({
-                print_taken: true,
-                print_taken_at: firebase.firestore.FieldValue.serverTimestamp(),
-                print_taken_by: window.currentUser.uid
-            });
-            setTimeout(() => {
-                if (typeof loadBranchReports === 'function') {
-                    loadBranchReports('table-user1-reports');
-                    loadBranchReports('table-user2-reports');
-                }
-            }, 1000);
-        }
-
-        // Clean up attribute after print dialog finishes (or cancels)
-        setTimeout(() => {
-            document.body.removeAttribute('data-print-section');
-        }, 1000);
-
-    } catch (e) {
-        console.error("Print declaration error:", e);
-        if (typeof window.showToast === 'function') {
-            window.showToast(e.message, "error");
-        } else {
-            alert("Error generating print: " + e.message);
-        }
+        tbody.innerHTML = rows.join('');
+    } catch (err) {
+        console.error("Error loading branch reports:", err);
     }
-    if (typeof window.hideLoader === 'function') window.hideLoader();
-};
+    window.hideLoader();
+}
 
-// Mobile Sidebar Toggle
-document.addEventListener('DOMContentLoaded', () => {
-    const menuToggle = document.getElementById('menu-toggle');
-    const sidebar = document.querySelector('.sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
+// ==========================================
+// KEY TRANSFER LOGIC
+// ==========================================
 
-    const toggleSidebar = (show) => {
-        if (show === undefined) show = !sidebar.classList.contains('active');
+document.querySelectorAll('[data-target="branch-key-transfer"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        initKeyTransferView();
+    });
+});
 
-        if (show) {
-            sidebar.classList.add('active');
-            overlay.classList.add('active');
-            menuToggle.querySelector('i').classList.replace('fa-bars', 'fa-times');
-        } else {
-            sidebar.classList.remove('active');
-            overlay.classList.remove('active');
-            menuToggle.querySelector('i').classList.replace('fa-times', 'fa-bars');
-        }
-    };
+document.querySelectorAll('[data-target="user1-key-history"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        loadKeyTransferHistory('table-key-history-user1');
+    });
+});
 
-    if (menuToggle && sidebar && overlay) {
-        menuToggle.addEventListener('click', () => toggleSidebar());
-        overlay.addEventListener('click', () => toggleSidebar(false));
+document.querySelectorAll('[data-target="user2-key-history"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        loadKeyTransferHistory('table-key-history-user2');
+    });
+});
 
-        // Close sidebar when clicking a nav item on mobile
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => {
-                if (window.innerWidth <= 768) {
-                    toggleSidebar(false);
-                }
-            });
-        });
+document.querySelectorAll('[data-target="reserve-key-history"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        loadKeyTransferHistory('table-key-history-reserve');
+    });
+});
+
+document.getElementById('key-transfer-type').addEventListener('change', (e) => {
+    const val = e.target.value;
+    const tempDates = document.getElementById('temp-key-dates');
+    const branchSel = document.getElementById('key-transfer-branch').parentElement;
+    const userSel = document.getElementById('key-transfer-to').parentElement;
+    const toSelect = document.getElementById('key-transfer-to');
+    const branchSelect = document.getElementById('key-transfer-branch');
+
+    if (val === 'temporary') {
+        tempDates.classList.remove('hidden');
+        branchSel.classList.remove('hidden');
+        userSel.classList.remove('hidden');
+        toSelect.required = true;
+        branchSelect.required = true;
+    } else if (val === 'resignation') {
+        tempDates.classList.add('hidden');
+        branchSel.classList.add('hidden');
+        userSel.classList.add('hidden');
+        toSelect.required = false;
+        branchSelect.required = false;
+    } else {
+        tempDates.classList.add('hidden');
+        branchSel.classList.remove('hidden');
+        userSel.classList.remove('hidden');
+        toSelect.required = true;
+        branchSelect.required = true;
     }
 });
 
-window.enableKeyTransferPrint = async (transferId) => {
-    if (!confirm('Are you sure you want to enable printing for this transfer receipt again?')) return;
+async function initKeyTransferView() {
     window.showLoader();
     try {
-        await window.db.collection('key_transfers').doc(transferId).update({
-            print_taken: false
-        });
-        window.showToast('Print enabled successfully.', 'success');
-        if (typeof loadAdminKeyReports === 'function') loadAdminKeyReports();
+        const branchId = window.currentUserData.branch_id;
+        const dateStr = new Date().toISOString().split('T')[0];
+        const docId = branchId + "_" + dateStr;
+
+        const decl = await window.db.collection("declarations").doc(docId).get();
+        let hasDeclared = false;
+
+        if (decl.exists) {
+            const data = decl.data();
+            const rolesToCheck = window.currentUserData.active_roles || [window.currentUserData.role];
+            if ((rolesToCheck.includes('user1') || rolesToCheck.includes('user1and1')) && data.user1_status === 'Signed') hasDeclared = true;
+            if (rolesToCheck.includes('user2') && data.user2_status === 'Signed') hasDeclared = true;
+            if (rolesToCheck.includes('admin')) hasDeclared = true; // Admins bypass this block
+        }
+
+        if (!hasDeclared) {
+            document.getElementById('key-transfer-blocked').classList.remove('hidden');
+            document.getElementById('key-transfer-form-container').classList.add('hidden');
+        } else {
+            document.getElementById('key-transfer-blocked').classList.add('hidden');
+            document.getElementById('key-transfer-form-container').classList.remove('hidden');
+
+            const ktSelect = document.getElementById('key-transfer-number');
+            if (ktSelect) {
+                ktSelect.innerHTML = '';
+                let hasKeys = false;
+                if (window.currentUserData.key1) {
+                    ktSelect.innerHTML += `<option value="${window.currentUserData.key1}">${window.currentUserData.key1}</option>`;
+                    hasKeys = true;
+                }
+                if (window.currentUserData.key2) {
+                    ktSelect.innerHTML += `<option value="${window.currentUserData.key2}">${window.currentUserData.key2}</option>`;
+                    hasKeys = true;
+                }
+                if (!hasKeys) {
+                    ktSelect.innerHTML = `<option value="" disabled selected>No keys assigned in profile</option>`;
+                }
+            }
+
+            await loadKeyTransferBranches();
+        }
+
+        await loadPendingKeyTransfers();
+        await loadActiveTemporaryKeys();
     } catch (err) {
-        window.showToast(err.message, 'error');
+        console.error(err);
+        window.showToast("Error loading key transfer view", "error");
+    }
+    window.hideLoader();
+}
+
+async function loadKeyTransferBranches() {
+    const selectBranch = document.getElementById('key-transfer-branch');
+    selectBranch.innerHTML = '<option value="" disabled selected>Loading...</option>';
+
+    try {
+        const snap = await window.db.collection("branches").get();
+        selectBranch.innerHTML = '<option value="" disabled selected>Select Branch...</option>';
+        snap.forEach(doc => {
+            const data = doc.data();
+            const opt = document.createElement('option');
+            opt.value = doc.id;
+            opt.textContent = data.name || doc.id;
+            selectBranch.appendChild(opt);
+        });
+
+        const defaultBranchId = window.currentUserData.original_branch_id || window.currentUserData.branch_id;
+        selectBranch.value = defaultBranchId;
+        await loadKeyTransferUsers(defaultBranchId);
+    } catch (err) {
+        console.error("Error loading branches", err);
+    }
+}
+
+document.getElementById('key-transfer-branch').addEventListener('change', async (e) => {
+    await loadKeyTransferUsers(e.target.value);
+});
+
+async function loadKeyTransferUsers(branchId) {
+    const select = document.getElementById('key-transfer-to');
+    select.disabled = true;
+    select.innerHTML = '<option value="" disabled selected>Loading Users...</option>';
+
+    const snap = await window.db.collection("users").where("branch_id", "==", branchId).get();
+    select.innerHTML = '<option value="" disabled selected>Select User...</option>';
+    let hasUsers = false;
+    snap.forEach(doc => {
+        if (doc.id !== window.currentUser.uid) {
+            hasUsers = true;
+            const data = doc.data();
+            const opt = document.createElement('option');
+            opt.value = doc.id;
+            opt.dataset.name = data.name;
+            opt.textContent = `${data.name} (${data.role})`;
+            select.appendChild(opt);
+        }
+    });
+
+    if (hasUsers) {
+        select.disabled = false;
+    } else {
+        select.innerHTML = '<option value="" disabled selected>No other users</option>';
+    }
+}
+
+document.getElementById('form-key-transfer').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const toSelect = document.getElementById('key-transfer-to');
+    const keyNumber = document.getElementById('key-transfer-number').value;
+    const transferType = document.getElementById('key-transfer-type').value;
+    const fromDate = document.getElementById('key-transfer-from').value;
+    const toDate = document.getElementById('key-transfer-to-date').value;
+    const reason = document.getElementById('key-transfer-reason').value;
+
+    let finalReceiverId = toSelect.value;
+    let finalReceiverName = "";
+    let finalReceiverBranchId = document.getElementById('key-transfer-branch').value;
+
+    if (transferType === 'resignation') {
+        if (!confirm("Are you sure you want to resign and return your key to the Admin? This action cannot be undone.")) return;
+        finalReceiverId = 'ADMIN';
+        finalReceiverName = 'System Admin';
+        finalReceiverBranchId = 'ADMIN';
+    } else {
+        if (toSelect.selectedIndex !== -1) {
+            finalReceiverName = toSelect.options[toSelect.selectedIndex].dataset.name;
+        }
+
+        if (transferType === 'temporary' && (!fromDate || !toDate)) {
+            window.showToast("Please provide both From and To dates for temporary transfers.", "error");
+            return;
+        }
+        if (!finalReceiverId) {
+            window.showToast("Please select a receiver.", "error");
+            return;
+        }
+    }
+
+    window.showLoader();
+    try {
+        const existingTransfersSnap = await window.db.collection("key_transfers")
+            .where("sender_id", "==", window.currentUser.uid)
+            .where("key_number", "==", keyNumber)
+            .where("status", "in", ["pending", "accepted"])
+            .get();
+
+        if (!existingTransfersSnap.empty) {
+            window.showToast("You already have an active or pending transfer for this key.", "error");
+            window.hideLoader();
+            return;
+        }
+
+        await window.db.collection("key_transfers").add({
+            branch_id: window.currentUserData.original_branch_id || window.currentUserData.branch_id,
+            receiver_branch_id: finalReceiverBranchId,
+            sender_id: window.currentUser.uid,
+            sender_name: window.currentUserData.name,
+            receiver_id: finalReceiverId,
+            receiver_name: finalReceiverName,
+            key_number: keyNumber,
+            transfer_type: transferType,
+            from_date: fromDate || null,
+            to_date: toDate || null,
+            reason: reason,
+            status: 'pending',
+            created_at: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        window.showToast("Key transfer request sent.", "success");
+        document.getElementById('form-key-transfer').reset();
+    } catch (err) {
+        window.showToast(err.message, "error");
+    }
+    window.hideLoader();
+});
+
+async function loadPendingKeyTransfers() {
+    const tbody = document.querySelector('#table-incoming-keys tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const snap = await window.db.collection("key_transfers")
+        .where("receiver_id", "==", window.currentUser.uid)
+        .get();
+
+    let hasPending = false;
+    snap.forEach(doc => {
+        const data = doc.data();
+        if (data.status !== 'pending') return;
+        hasPending = true;
+
+        const tr = document.createElement('tr');
+        const dt = data.created_at ? data.created_at.toDate().toLocaleString('en-GB') : 'Just now';
+
+        const typeInfo = data.transfer_type === 'temporary'
+            ? `Temporary (${data.from_date} to ${data.to_date})`
+            : 'Permanent';
+
+        const escapeHtml = (value) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+        tr.innerHTML = `
+            <td style="text-align: center;">${dt}</td>
+            <td style="text-align: center;"><strong>${escapeHtml(data.sender_name)}</strong></td>
+            <td style="text-align: center;">${escapeHtml(data.key_number)}</td>
+            <td style="text-align: center;">${escapeHtml(typeInfo)}</td>
+            <td style="text-align: center;">${escapeHtml(data.reason)}</td>
+            <td style="text-align: center;">
+                <div style="display: flex; gap: 5px;">
+                    <button class="btn btn-success btn-sm" style="font-size: 11px; font-weight: 700; background-color: green; color: white;" onclick="openAcceptKeyModal('${doc.id}', '${escapeHtml(data.key_number)}', '${escapeHtml(data.sender_name)}')">Accept</button>
+                    <button class="btn btn-danger btn-sm" style="font-size: 11px; font-weight: 700; background-color: red; color: white;" onclick="rejectKeyTransfer('${doc.id}')">Reject</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    if (!hasPending) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: #888;">No pending incoming requests.</td></tr>';
+    }
+}
+
+window.loadActiveTemporaryKeys = async function () {
+    const tbody = document.querySelector('#table-active-keys tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const snap = await window.db.collection("key_transfers")
+        .where("receiver_id", "==", window.currentUser.uid)
+        .get();
+
+    const branchSnap = await window.db.collection("branches").get();
+    const branchMap = {};
+    branchSnap.forEach(b => {
+        branchMap[b.id] = b.data().name || b.id;
+    });
+
+    let hasKeys = false;
+    snap.forEach(doc => {
+        const data = doc.data();
+        if (data.status !== 'accepted' || data.transfer_type !== 'temporary') return;
+        hasKeys = true;
+
+        const tr = document.createElement('tr');
+        const dt = data.accepted_at ? data.accepted_at.toDate().toLocaleDateString('en-GB') : 'Unknown';
+        const branchName = branchMap[data.branch_id] || data.branch_id || 'Unknown';
+        const escapeHtml = (value) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+        tr.innerHTML = `
+            <td>${dt}</td>
+            <td><strong>${escapeHtml(data.sender_name)}</strong></td>
+            <td>${escapeHtml(branchName)}</td>
+            <td>${escapeHtml(data.key_number)}</td>
+            <td>${escapeHtml(formatDateDisplay(data.from_date))} to ${escapeHtml(formatDateDisplay(data.to_date))}</td>
+            <td>
+                <button class="btn btn-primary btn-sm" style="font-size: 12px; font-weight: 500; background-color: var(--gold); color: black;" onclick="returnTemporaryKey('${doc.id}')">Return Key</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    if (!hasKeys) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: #888;">No active temporary keys.</td></tr>';
+    }
+};
+
+window.returnTemporaryKey = async function (transferId) {
+    if (!confirm("Are you sure you want to return this key?")) return;
+
+    window.showLoader();
+    try {
+        await window.db.collection("key_transfers").doc(transferId).update({
+            status: 'returned',
+            returned_at: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        window.showToast("Key returned successfully. Generating printout...", "success");
+        if (typeof window.printKeyTransferReceipt === 'function') {
+            await window.printKeyTransferReceipt(transferId, true);
+        } else {
+            setTimeout(() => window.location.reload(), 1000);
+        }
+    } catch (err) {
+        window.showToast(err.message, "error");
+        window.hideLoader();
+    }
+};
+
+window.rejectKeyTransfer = async function (transferId) {
+    if (!confirm("Are you sure you want to reject this key transfer request?")) return;
+
+    window.showLoader();
+    try {
+        await window.db.collection("key_transfers").doc(transferId).update({
+            status: 'rejected',
+            rejected_at: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        window.showToast("Key transfer rejected successfully.", "success");
+        await loadPendingKeyTransfers();
+    } catch (err) {
+        window.showToast(err.message, "error");
     }
     window.hideLoader();
 };
 
-window.printKeyTransferReceipt = async (transferId, reloadAfter = false) => {
-    if (typeof window.showLoader === 'function') window.showLoader();
+window.openAcceptKeyModal = async (transferId, keyNumber, senderName) => {
+    document.getElementById('accept-key-number').textContent = keyNumber;
+    document.getElementById('accept-key-sender').textContent = senderName;
+    document.getElementById('accept-key-transfer-id').value = transferId;
+
+    document.getElementById('accept-key-stock').textContent = "Loading...";
+    document.getElementById('accept-key-cash').textContent = "Loading...";
+    document.getElementById('modal-accept-key').classList.remove('hidden');
+
     try {
-        const transferDoc = await window.db.collection('key_transfers').doc(transferId).get();
-        if (!transferDoc.exists) throw new Error('Transfer record not found.');
-        const data = transferDoc.data();
+        const transferDoc = await window.db.collection("key_transfers").doc(transferId).get();
+        if (!transferDoc.exists) throw new Error("Transfer not found");
 
-        let senderBranchName = data.branch_id;
-        let receiverBranchName = data.receiver_branch_id;
-        try {
-            const [sb, rb] = await Promise.all([
-                window.db.collection('branches').doc(data.branch_id).get(),
-                window.db.collection('branches').doc(data.receiver_branch_id).get()
-            ]);
-            if (sb.exists) senderBranchName = sb.data().name || data.branch_id;
-            if (rb.exists) receiverBranchName = rb.data().name || data.receiver_branch_id;
-        } catch (e) { }
+        const transferData = transferDoc.data();
+        const branchId = transferData.branch_id; // Sender's branch
 
-        const formatTime = (ts) => {
-            if (!ts) return 'N/A';
-            return ts.toDate ? ts.toDate().toLocaleString('en-GB') : new Date(ts).toLocaleString('en-GB');
-        };
-
-        const printContainer = document.getElementById('key-transfer-print');
-        if (printContainer) {
-            if (data.transfer_type === 'permanent') {
-                const transferDate = (data.accepted_at || data.created_at || new Date());
-                const displayDate = formatTime(transferDate).split(',')[0].trim();
-
-                printContainer.innerHTML = `
-                    <div class="print-doc-container" style="padding: 20px; font-family: 'Times New Roman', serif; line-height: 1.6; color: #000; min-height: 250mm; box-sizing: border-box; display: flex; flex-direction: column;">
-                        <h1 style="text-align: center; margin-bottom: 5px; text-decoration: underline; font-size: 24px;">CERTIFICATE</h1>
-                        <h2 style="text-align: center; margin-top: 0; margin-bottom: 30px; font-size: 18px;">HANDOVER / TAKEOVER</h2>
-                        
-                        <p style="text-align: justify; font-size: 16px; margin-bottom: 25px;">
-                            I, Mr./Ms. <strong>${escapeHtml(data.sender_name)}</strong> hereby handover my Locker and Shutter Key No. <strong>${escapeHtml(data.key_number)}</strong> of <strong>${escapeHtml(senderBranchName)}</strong> Branch to Mr./Ms. <strong>${escapeHtml(data.receiver_name)}</strong> on <strong>${displayDate}</strong> (date) in presence of Auditor Mr. <strong>${escapeHtml(data.auditor_name || '........................................')}</strong> and Appraiser Mr. <strong>${escapeHtml(data.appraiser_name || '........................................')}</strong>
-                        </p>
-
-                        <p style="text-align: justify; font-size: 16px; margin-bottom: 25px;">
-                            I, Mr./Ms. <strong>${escapeHtml(data.receiver_name)}</strong> hereby takeover Locker and Shutter Key No. <strong>${escapeHtml(data.key_number)}</strong> of <strong>${escapeHtml(senderBranchName)}</strong> branch from Mr./Ms. <strong>${escapeHtml(data.sender_name)}</strong> on <strong>${displayDate}</strong> (date) in presence of Auditor Mr. <strong>${escapeHtml(data.auditor_name || '........................................')}</strong> and Appraiser Mr. <strong>${escapeHtml(data.appraiser_name || '........................................')}</strong>
-                        </p>
-
-                        <p style="text-align: justify; font-size: 16px; margin-bottom: 40px;">
-                            During the auditing and appraising done in our branch, we found everything correct and satisfactory to our knowledge.
-                        </p>
-
-                        <table style="width: 100%; margin-bottom: 40px; font-size: 16px; border: none;">
-                            <tr>
-                                <td style="width: 50%; text-align: left; padding: 0; border: none;">
-                                    <div style="font-weight: bold; margin-bottom: 35px;">(HANDOVER)
-                                    <strong>${escapeHtml(data.sender_name)}</strong></div>
-                                    Signature: _______________________
-                                </td>
-                                <td style="width: 50%; text-align: right; padding: 0; border: none;">
-                                    <div style="font-weight: bold; margin-bottom: 35px;">(TAKEOVER)
-                                     <strong>${escapeHtml(data.receiver_name)}</strong></div>
-                                    Signature: _______________________
-                                </td>
-                            </tr>
-                        </table>
-
-                        <div style="font-weight: bold; font-size: 16px; margin-bottom: 15px;">Witness:</div>
-                        
-                        <table style="width: 100%; font-size: 16px; border: none; margin-bottom: 30px; line-height: 2;">
-                            <tr>
-                                <td style="width: 15%; padding: 0; border: none;">Auditor:</td>
-                                <td style="width: 35%; padding: 0; border: none;"><strong>${escapeHtml(data.auditor_name || '...............................................')}</strong></td>
-                                <td style="width: 15%; padding: 0; border: none;">Signature:</td>
-                                <td style="width: 35%; padding: 0; border: none;">.........................................</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 0; border: none;">Appraiser:</td>
-                                <td style="padding: 0; border: none;"><strong>${escapeHtml(data.appraiser_name || '...............................................')}</strong></td>
-                                <td style="padding: 0; border: none;">Signature:</td>
-                                <td style="padding: 0; border: none;">..........................................</td>
-                            </tr>
-                            <tr>
-                                <td colspan="2" style="width: 50%; text-align: left; padding: 0; border: none; vertical-align: bottom;">
-                                    Date & Time: <strong>${formatTime(transferDate)}</strong>
-                                </td>
-                                <td colspan="2" style="width: 50%; text-align: center; padding: 0; border: none;">
-                                    <div style="width: 140px; height: 90px; border: 1px dashed #ccc; margin-bottom: 8px; margin-left: auto; margin-right: auto;"></div>
-                                    Branch Seal:
-                                </td>
-                            </tr>
-                        </table>
-
-                       
-                    </div>
-                `;
-            } else {
-                printContainer.innerHTML = `
-                    <div class="print-doc-container">
-                        <div class="print-header">
-                            <h1>ART GROUP</h1>
-                            <h2>Key Transfer & Return Receipt</h2>
-                            <p>Generated: <strong>${new Date().toLocaleString('en-GB')}</strong></p>
-                        </div>
-
-                        <div class="print-section-title">Transfer Details</div>
-                        <table class="print-data-table">
-                            <tbody>
-                                <tr>
-                                    <td><strong>Key Number</strong></td>
-                                    <td>${escapeHtml(data.key_number)}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Transfer Type</strong></td>
-                                    <td>${data.transfer_type === 'temporary' ? 'Temporary (' + data.from_date + ' to ' + data.to_date + ')' : 'Permanent'}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Reason</strong></td>
-                                    <td>${escapeHtml(data.reason)}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Sender</strong></td>
-                                    <td>${escapeHtml(data.sender_name)} (${escapeHtml(senderBranchName)})</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Receiver</strong></td>
-                                    <td>${escapeHtml(data.receiver_name)} (${escapeHtml(receiverBranchName)})</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <div class="print-section-title">DATE AND TIME</div>
-                        <table class="print-data-table">
-                            <tbody>
-                                <tr>
-                                    <td><strong>Request Sent At</strong></td>
-                                    <td>${formatTime(data.created_at)}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Accepted At</strong></td>
-                                    <td>${formatTime(data.accepted_at)}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Returned At</strong></td>
-                                    <td>${formatTime(data.returned_at)}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <div class="print-section-title">Signatures with name </div>
-                        <div class="print-signatures-grid" style="margin-top: 10px;">
-                            <div class="print-signature-box" style="height: 150px; display: flex; flex-direction: column; justify-content: flex-end;">
-                                <div class="signature-line" style="margin-top: 0;">
-                                    ${escapeHtml(data.sender_name)} Signature
-                                </div>
-                            </div>
-                            <div class="print-signature-box" style="height: 150px; display: flex; flex-direction: column; justify-content: flex-end;">
-                                <div class="signature-line" style="margin-top: 0;">
-                                     ${escapeHtml(data.receiver_name)} Signature
-                                </div>
-                            </div>
-                              
-                        </div>
-                        <div class="print-section-title"> 
-                              </div>
-                    </div>
-                `;
-            }
+        let dateStr = new Date().toISOString().split('T')[0];
+        if (transferData.created_at) {
+            dateStr = transferData.created_at.toDate().toISOString().split('T')[0];
         }
 
-        document.body.setAttribute('data-print-section', 'key-transfer-print');
-        window.print();
+        const docId = branchId + "_" + dateStr;
+        const decl = await window.db.collection("declarations").doc(docId).get();
 
-        if (!data.print_taken) {
-            await window.db.collection('key_transfers').doc(transferId).update({
-                print_taken: true,
-                print_taken_at: firebase.firestore.FieldValue.serverTimestamp(),
-                print_taken_by: window.currentUser.uid
-            });
-        }
+        if (decl.exists) {
+            const data = decl.data();
 
-        setTimeout(() => {
-            document.body.removeAttribute('data-print-section');
-            if (reloadAfter) {
-                window.location.reload();
-            } else {
-                if (typeof loadKeyTransferHistory === 'function') {
-                    loadKeyTransferHistory('table-key-history-user1');
-                    loadKeyTransferHistory('table-key-history-user2');
-                }
-                if (typeof loadAdminKeyReports === 'function' && (window.currentUserData.role === 'admin' || window.currentUserData.role === 'hr' || window.currentUserData.role === 'ho')) {
-                    loadAdminKeyReports();
+            let stock = data.total_stock;
+            if (stock === undefined) {
+                const totalsSnap = await window.db.collection("daily_totals").where("branch_id", "==", branchId).where("date", "==", dateStr).get();
+                if (!totalsSnap.empty) {
+                    stock = totalsSnap.docs[0].data().total_stock;
                 }
             }
-        }, 1000);
 
-    } catch (e) {
-        console.error("Print key transfer error:", e);
-        if (typeof window.showToast === 'function') {
-            window.showToast(e.message, "error");
+            document.getElementById('accept-key-stock').textContent = stock !== undefined ? stock + " items" : "Not specified";
+            document.getElementById('accept-key-cash').textContent = data.cash_total !== undefined ? "₹" + data.cash_total.toLocaleString() : "Not specified";
         } else {
-            alert("Error generating print: " + e.message);
+            document.getElementById('accept-key-stock').textContent = "Declaration missing";
+            document.getElementById('accept-key-cash').textContent = "Declaration missing";
         }
-        if (reloadAfter) window.location.reload();
+    } catch (e) {
+        console.error(e);
+        document.getElementById('accept-key-stock').textContent = "Error";
+        document.getElementById('accept-key-cash').textContent = "Error";
     }
-    if (typeof window.hideLoader === 'function') window.hideLoader();
 };
+
+document.getElementById('btn-confirm-accept-key').addEventListener('click', async () => {
+    const transferId = document.getElementById('accept-key-transfer-id').value;
+    window.showLoader();
+    try {
+        const transferDoc = await window.db.collection("key_transfers").doc(transferId).get();
+        if (!transferDoc.exists) throw new Error("Transfer record not found.");
+
+        const data = transferDoc.data();
+        const { sender_id, receiver_id, key_number, transfer_type } = data;
+
+        // 1. Update the transfer status
+        await window.db.collection("key_transfers").doc(transferId).update({
+            status: 'accepted',
+            accepted_at: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 2. If permanent, update user assignments
+        if (transfer_type === 'permanent') {
+            console.log("Processing permanent assignment update...");
+
+            // Update Sender: Clear the key
+            const senderDoc = await window.db.collection("users").doc(sender_id).get();
+            let senderRole = 'user';
+            if (senderDoc.exists) {
+                const sData = senderDoc.data();
+                senderRole = sData.role || 'user';
+                const sUpdates = {};
+                if (sData.key1 === key_number) {
+                    sUpdates.key1 = null;
+                    sUpdates.key1_assigned_at = null;
+                }
+                if (sData.key2 === key_number) {
+                    sUpdates.key2 = null;
+                    sUpdates.key2_assigned_at = null;
+                }
+                if (Object.keys(sUpdates).length > 0) {
+                    await window.db.collection("users").doc(sender_id).update(sUpdates);
+                }
+            }
+
+            // Update Receiver: Assign the key and potentially update role
+            const receiverDoc = await window.db.collection("users").doc(receiver_id).get();
+            if (receiverDoc.exists) {
+                const rData = receiverDoc.data();
+                const rUpdates = {};
+
+                // Update Key Assignment
+                if (rData.key1 === key_number || rData.key2 === key_number) {
+                    // Already assigned
+                } else if (!rData.key1) {
+                    rUpdates.key1 = key_number;
+                    rUpdates.key1_assigned_at = firebase.firestore.FieldValue.serverTimestamp();
+                } else {
+                    rUpdates.key2 = key_number;
+                    rUpdates.key2_assigned_at = firebase.firestore.FieldValue.serverTimestamp();
+                }
+
+                // Update Role if receiver is a 'reserve' user or has no role
+                // If it's a permanent replacement, they usually take the sender's role
+                if (rData.role === 'user' || !rData.role) {
+                    rUpdates.role = senderRole;
+                }
+
+                if (Object.keys(rUpdates).length > 0) {
+                    await window.db.collection("users").doc(receiver_id).update(rUpdates);
+                }
+            }
+        }
+
+        window.showToast("Key accepted successfully. Refreshing permissions...", "success");
+        document.getElementById('modal-accept-key').classList.add('hidden');
+        setTimeout(() => window.location.reload(), 1000);
+    } catch (err) {
+        window.showToast(err.message, "error");
+        window.hideLoader();
+    }
+});
+
+async function loadKeyTransferHistory(tableId) {
+    const tbody = document.querySelector(`#${tableId} tbody`);
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const branchSnap = await window.db.collection("branches").get();
+    const branchMap = {};
+    branchSnap.forEach(b => {
+        branchMap[b.id] = b.data().name || b.id;
+    });
+
+    const currentUid = window.currentUser.uid;
+    const [sentSnap, receivedSnap] = await Promise.all([
+        window.db.collection("key_transfers").where("sender_id", "==", currentUid).get(),
+        window.db.collection("key_transfers").where("receiver_id", "==", currentUid).get()
+    ]);
+
+    const uniqueMap = new Map();
+    sentSnap.forEach(doc => { const d = doc.data(); d.id = doc.id; uniqueMap.set(doc.id, d); });
+    receivedSnap.forEach(doc => { const d = doc.data(); d.id = doc.id; uniqueMap.set(doc.id, d); });
+
+    let docs = Array.from(uniqueMap.values());
+    docs.sort((a, b) => {
+        const timeA = a.created_at ? a.created_at.toDate().getTime() : 0;
+        const timeB = b.created_at ? b.created_at.toDate().getTime() : 0;
+        return timeB - timeA;
+    });
+
+    if (docs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px; color: #888;">No key transfer history.</td></tr>';
+        return;
+    }
+
+    const escapeLocal = (value) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    docs.forEach(data => {
+        const isSent = data.sender_id === currentUid;
+        const direction = isSent ? '<span class="status-badge status-approved">Sent</span>' : '<span class="status-badge" style="background:#3b82f6;color:#fff;">Received</span>';
+
+        const otherBranchId = isSent ? data.receiver_branch_id : data.branch_id;
+        const otherBranchName = branchMap[otherBranchId] || otherBranchId || 'Unknown';
+
+        const staffName = isSent ? data.receiver_name : data.sender_name;
+
+        const dt = data.created_at ? data.created_at.toDate().toLocaleString('en-GB') : 'Unknown';
+        const acceptTime = data.accepted_at ? data.accepted_at.toDate().toLocaleString('en-GB') : '-';
+        const returnTime = data.returned_at ? data.returned_at.toDate().toLocaleString('en-GB') : '-';
+
+        let statusBadge = '<span class="status-badge status-pending"><i class="fa-solid fa-spinner"></span>';
+        if (data.status === 'accepted') statusBadge = '<span class="status-badge status-approved" title="Approved"><i class="fa-solid fa-check"></i></span>';
+        else if (data.status === 'returned') statusBadge = '<span class="status-badge" style="background:#0032d6ff;color:#fff;" title="Returned"><i class="fa-solid fa-undo"></i></span>';
+        else if (data.status === 'rejected') statusBadge = '<span class="status-badge" style="background:#e60d0dff;color:#fff;" title="Rejected"><i class="fa-solid fa-times"></i></span>';
+
+        let actionHtml = '-';
+        if (data.status === 'returned' || (data.transfer_type === 'permanent' && data.status === 'accepted')) {
+            if (data.print_taken) {
+                actionHtml = `<span class="status-badge" style="background: rgba(107, 114, 128, 0.2); color: #6b7280; font-size: 11px;"><i class="fa-solid fa-check"></i> Printed</span>`;
+            } else {
+                actionHtml = `<button class="btn btn-primary btn-sm" style="padding: 4px 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;" onclick="window.printKeyTransferReceipt('${data.id}')"><i class="fa-solid fa-print"></i> Print</button>`;
+            }
+        }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${dt}</td>
+            <td>${direction}</td>
+            <td>${escapeLocal(otherBranchName)}</td>
+            <td><strong>${escapeLocal(staffName)}</strong></td>
+            <td>${escapeLocal(data.key_number)}</td>
+            <td>${acceptTime}</td>
+            <td>${returnTime}</td>
+            <td>${statusBadge}</td>
+            <td>${actionHtml}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ==========================================
+// USER PROFILE LOGIC
+// ==========================================
+
+document.querySelectorAll('[data-target="user-profile"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        loadUserProfile();
+    });
+});
+
+async function loadUserProfile() {
+    const userData = window.currentUserData;
+    if (!userData) return;
+
+    const elName = document.getElementById('profile-name');
+    if (elName) elName.textContent = userData.name || "N/A";
+
+    let branchName = "N/A";
+    if (userData.branch_id) {
+        try {
+            const branchDoc = await window.db.collection('branches').doc(userData.branch_id).get();
+            if (branchDoc.exists) {
+                branchName = branchDoc.data().name || userData.branch_id;
+            } else {
+                branchName = userData.branch_id;
+            }
+        } catch (e) {
+            console.error("Error fetching branch name", e);
+            branchName = userData.branch_id;
+        }
+    }
+    const elBranch = document.getElementById('profile-branch');
+    if (elBranch) elBranch.textContent = branchName;
+    const elLocker = document.getElementById('profile-locker');
+    if (elLocker) elLocker.textContent = userData.locker_number || "N/A";
+
+    let assignedKeys = [];
+    if (userData.key1) assignedKeys.push(userData.key1);
+    if (userData.key2) assignedKeys.push(userData.key2);
+
+    const elKey = document.getElementById('profile-key');
+    if (elKey) elKey.textContent = assignedKeys.length > 0 ? assignedKeys.join(", ") : "None assigned";
+}
+
+document.getElementById('form-change-password').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const newPass = document.getElementById('profile-new-password').value;
+    const confirmPass = document.getElementById('profile-confirm-password').value;
+
+    if (newPass !== confirmPass) {
+        window.showToast("Passwords do not match.", "error");
+        return;
+    }
+
+    if (newPass.length < 6) {
+        window.showToast("Password must be at least 6 characters.", "error");
+        return;
+    }
+
+    window.showLoader();
+    try {
+        await window.auth.currentUser.updatePassword(newPass);
+        window.showToast("Password updated successfully.", "success");
+        document.getElementById('form-change-password').reset();
+    } catch (err) {
+        if (err.code === 'auth/requires-recent-login') {
+            window.showToast("Requires recent login. Please log out and log in again before changing password.", "error");
+        } else {
+            window.showToast(err.message, "error");
+        }
+    }
+    window.hideLoader();
+});
+
+// User 1 Report Filter
+document.addEventListener('DOMContentLoaded', () => {
+    const formUser1Filter = document.getElementById('form-user1-filter-reports');
+    if (formUser1Filter) {
+        formUser1Filter.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const fromDate = document.getElementById('user1-filter-from').value;
+            const toDate = document.getElementById('user1-filter-to').value;
+            loadBranchReports('table-user1-reports', fromDate, toDate);
+        });
+    }
+    const btnUser1FilterClear = document.getElementById('btn-user1-filter-clear');
+    if (btnUser1FilterClear) {
+        btnUser1FilterClear.addEventListener('click', () => {
+            document.getElementById('form-user1-filter-reports').reset();
+            loadBranchReports('table-user1-reports');
+        });
+    }
+
+    // User 2 Report Filter
+    const formUser2Filter = document.getElementById('form-user2-filter-reports');
+    if (formUser2Filter) {
+        formUser2Filter.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const fromDate = document.getElementById('user2-filter-from').value;
+            const toDate = document.getElementById('user2-filter-to').value;
+            loadBranchReports('table-user2-reports', fromDate, toDate);
+        });
+    }
+    const btnUser2FilterClear = document.getElementById('btn-user2-filter-clear');
+    if (btnUser2FilterClear) {
+        btnUser2FilterClear.addEventListener('click', () => {
+            document.getElementById('form-user2-filter-reports').reset();
+            loadBranchReports('table-user2-reports');
+        });
+    }
+});
