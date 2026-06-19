@@ -1,5 +1,5 @@
 const firebaseConfig = {
-   apiKey: "AIzaSyCzMSEp324rtnTwtRLPq9hGxgdDsv4pS3c",
+    apiKey: "AIzaSyCzMSEp324rtnTwtRLPq9hGxgdDsv4pS3c",
     authDomain: "locker-manage.firebaseapp.com",
     projectId: "locker-manage",
     storageBucket: "locker-manage.firebasestorage.app",
@@ -7,9 +7,7 @@ const firebaseConfig = {
     appId: "1:812684053866:web:be21dc3859b3593d946913"
 };
 window.firebaseConfig = firebaseConfig;
-
 const isConfigured = true;
-
 let app, auth, db;
 try {
     if (isConfigured) {
@@ -20,17 +18,14 @@ try {
 } catch (err) {
     alert("FATAL ERROR during initialization: " + err.message);
 }
-
 // Global State
 window.currentUser = null;
 window.currentUserData = null;
 window.db = db;
 window.auth = auth;
-
 // UI Utilities
 window.showLoader = () => document.getElementById('loader').classList.remove('hidden');
 window.hideLoader = () => document.getElementById('loader').classList.add('hidden');
-
 window.logAuditEvent = async (action, type, details) => {
     try {
         await window.db.collection("audit_logs").add({
@@ -47,7 +42,6 @@ window.logAuditEvent = async (action, type, details) => {
         console.error("Audit log error:", err);
     }
 };
-
 window.showToast = (message, type = 'info') => {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
@@ -59,32 +53,25 @@ window.showToast = (message, type = 'info') => {
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 };
-
 // Routing & View Management
 const switchView = (targetId) => {
     document.querySelectorAll('.view-section').forEach(section => section.classList.add('hidden'));
     document.getElementById(targetId).classList.remove('hidden');
-
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
     document.querySelector(`[data-target="${targetId}"]`).classList.add('active');
 };
-
 window.updateReportHeader = (sectionId, summaryText) => {
     const section = document.getElementById(sectionId);
     if (!section) return;
-
     const summaryEl = section.querySelector('.report-summary');
     const generatedEl = section.querySelector('.report-generated');
-
     if (summaryEl) {
         summaryEl.textContent = summaryText || '';
     }
-
     if (generatedEl) {
         generatedEl.textContent = new Date().toLocaleString();
     }
 };
-
 function escapeExportHtml(value) {
     return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -93,16 +80,13 @@ function escapeExportHtml(value) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
-
 window.downloadReportExcel = (sectionId, fileNameBase = 'report') => {
     const section = document.getElementById(sectionId);
     const table = section?.querySelector('table');
-
     if (!table) {
         window.showToast('No report table available to export.', 'error');
         return;
     }
-
     const reportTitle = section.querySelector('.report-print-header h1')?.textContent || 'Report';
     const reportSummary = section.querySelector('.report-summary')?.textContent || '';
     const generatedAt = new Date().toLocaleString();
@@ -112,10 +96,8 @@ window.downloadReportExcel = (sectionId, fileNameBase = 'report') => {
         .replace(/[^a-z0-9-_]+/g, '-')
         .replace(/-+/g, '-')
         .replace(/^-|-$/g, '') || 'report';
-
     const clonedTable = table.cloneNode(true);
     clonedTable.querySelectorAll('i').forEach(icon => icon.remove());
-
     const excelHtml = `<!DOCTYPE html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
 <head>
@@ -138,11 +120,9 @@ window.downloadReportExcel = (sectionId, fileNameBase = 'report') => {
     ${clonedTable.outerHTML}
 </body>
 </html>`;
-
     const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-
     link.href = url;
     link.download = `${safeFileName}.xls`;
     document.body.appendChild(link);
@@ -150,7 +130,6 @@ window.downloadReportExcel = (sectionId, fileNameBase = 'report') => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 };
-
 window.printReport = (sectionId) => {
     window.updateReportHeader(
         sectionId,
@@ -159,25 +138,21 @@ window.printReport = (sectionId) => {
     document.body.setAttribute('data-print-section', sectionId);
     window.print();
 };
-
 window.addEventListener('afterprint', () => {
     document.body.removeAttribute('data-print-section');
 });
-
 document.querySelectorAll('.nav-item').forEach(nav => {
     nav.addEventListener('click', (e) => {
         e.preventDefault();
         switchView(nav.dataset.target);
     });
 });
-
 document.querySelectorAll('.nav-dropdown-toggle').forEach(toggle => {
     toggle.addEventListener('click', (e) => {
         e.preventDefault();
         const menu = toggle.nextElementSibling;
         const icon = toggle.querySelector('.fa-chevron-down');
         if (icon) icon.style.transition = 'transform 0.3s ease';
-
         if (menu.classList.contains('hidden')) {
             menu.classList.remove('hidden');
             if (icon) icon.style.transform = 'rotate(180deg)';
@@ -187,16 +162,13 @@ document.querySelectorAll('.nav-dropdown-toggle').forEach(toggle => {
         }
     });
 });
-
 // Authentication Flow
 const loginForm = document.getElementById('login-form');
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!isConfigured) return;
-
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
-
     window.showLoader();
     try {
         await auth.signInWithEmailAndPassword(email, password);
@@ -205,7 +177,6 @@ loginForm.addEventListener('submit', async (e) => {
         window.showToast(error.message, "error");
     }
 });
-
 document.getElementById('logout-btn').addEventListener('click', () => {
     if (auth) auth.signOut();
 });
@@ -225,10 +196,8 @@ if (isConfigured) {
                         auth.signOut();
                         return;
                     }
-
                     if (window.currentUserData.role !== 'admin' && window.currentUserData.role !== 'hr' && window.currentUserData.role !== 'ho') {
                         const contexts = [];
-
                         // 1. Check if user SENT a key TEMPORARILY (Access Suspended)
                         let suspended = false;
                         try {
@@ -237,13 +206,11 @@ if (isConfigured) {
                                 .where('status', '==', 'accepted')
                                 .where('transfer_type', '==', 'temporary')
                                 .get();
-
                             if (!sentKeysSnap.empty) {
                                 suspended = true;
                                 window.currentUserData.sent_key_to = sentKeysSnap.docs[0].data().receiver_name;
                             }
                         } catch (err) { console.error("Error fetching sent keys:", err); }
-
                         // 2. Add original context if not suspended
                         const originalBranchId = window.currentUserData.branch_id ? String(window.currentUserData.branch_id) : null;
                         if (!suspended && originalBranchId) {
@@ -257,25 +224,20 @@ if (isConfigured) {
                                 });
                             } catch (err) { console.error("Error fetching original branch:", err); }
                         }
-
                         // 3. Fetch all RECEIVED keys (Transferred contexts)
                         try {
                             const activeKeysSnap = await db.collection('key_transfers')
                                 .where('receiver_id', '==', user.uid)
                                 .where('status', '==', 'accepted')
                                 .get();
-
                             for (const docSnap of activeKeysSnap.docs) {
                                 const keyData = docSnap.data();
                                 const bId = keyData.branch_id ? String(keyData.branch_id) : null;
                                 if (!bId) continue;
-
                                 const branchDoc = await db.collection('branches').doc(bId).get();
                                 const bName = branchDoc.exists ? (branchDoc.data().name || bId) : bId;
-
                                 const senderDoc = await db.collection('users').doc(keyData.sender_id).get();
                                 const sRole = senderDoc.exists ? senderDoc.data().role : 'user';
-
                                 let existing = contexts.find(c => c.branch_id === bId);
                                 if (existing) {
                                     if (!existing.roles.includes(sRole)) existing.roles.push(sRole);
@@ -289,14 +251,11 @@ if (isConfigured) {
                                 }
                             }
                         } catch (err) { console.error("Error fetching received keys:", err); }
-
                         window.currentUserData.available_contexts = contexts;
-
                         // Set default context if none selected
                         if (!window.activeContextId || !contexts.find(c => c.branch_id === window.activeContextId)) {
                             window.activeContextId = contexts.length > 0 ? contexts[0].branch_id : originalBranchId;
                         }
-
                         const activeContext = contexts.find(c => c.branch_id === window.activeContextId);
                         if (activeContext) {
                             window.currentUserData.branch_id = activeContext.branch_id;
@@ -305,7 +264,6 @@ if (isConfigured) {
                             window.currentUserData.active_roles = ['user'];
                         }
                     }
-
                     setupDashboard(window.currentUserData);
                     window.logAuditEvent("User Login", "login", `Logged in to role: ${window.currentUserData.role}`);
                 } else {
@@ -345,7 +303,6 @@ if (isConfigured) {
         window.hideLoader();
     });
 }
-
 function showLogin() {
     document.getElementById('login-section').classList.add('active');
     document.getElementById('main-app').classList.add('hidden');
@@ -354,7 +311,6 @@ function showLogin() {
     document.getElementById('nav-user2').classList.add('hidden');
     document.getElementById('nav-reserve').classList.add('hidden');
 }
-
 window.switchContext = async (branchId) => {
     window.showLoader();
     window.activeContextId = branchId;
@@ -364,23 +320,18 @@ window.switchContext = async (branchId) => {
         window.currentUserData.branch_id = context.branch_id;
         window.currentUserData.active_roles = context.roles;
     }
-
     // Reset navigation visibility before re-setup
     document.getElementById('nav-admin').classList.add('hidden');
     document.getElementById('nav-user1').classList.add('hidden');
     document.getElementById('nav-user2').classList.add('hidden');
     document.getElementById('nav-reserve').classList.add('hidden');
-
     setupDashboard(window.currentUserData);
     window.hideLoader();
 };
-
 function setupDashboard(userData) {
     document.getElementById('login-section').classList.remove('active');
     document.getElementById('main-app').classList.remove('hidden');
-
     document.getElementById('user-display-name').textContent = userData.name || "User";
-
     // Branch Switcher Logic
     const switcher = document.getElementById('branch-switcher-container');
     const select = document.getElementById('branch-context-select');
@@ -395,7 +346,6 @@ function setupDashboard(userData) {
                 if (ctx.branch_id === window.activeContextId) opt.selected = true;
                 select.appendChild(opt);
             });
-
             if (!select.dataset.listenerAdded) {
                 select.addEventListener('change', (e) => {
                     const newBranchId = e.target.value;
@@ -409,12 +359,10 @@ function setupDashboard(userData) {
     } else {
         if (switcher) switcher.classList.add('hidden');
     }
-
     let activeRoles = userData.active_roles || [userData.role];
     if (activeRoles.includes('user') && (activeRoles.includes('user1') || activeRoles.includes('user2') || activeRoles.includes('user1and1'))) {
         activeRoles = activeRoles.filter(r => r !== 'user');
     }
-
     let roleDisplay = "Reserve User";
     const isActingReserve = userData.role === 'user' && (activeRoles.includes('user1') || activeRoles.includes('user2') || activeRoles.includes('user1and1'));
     if (activeRoles.includes('admin') || activeRoles.includes('hr') || activeRoles.includes('ho')) {
@@ -432,9 +380,7 @@ function setupDashboard(userData) {
             }
         }
     }
-
     document.getElementById('user-display-role').textContent = roleDisplay;
-
     if (activeRoles.includes('admin') || activeRoles.includes('hr') || activeRoles.includes('ho')) {
         const navAdmin = document.getElementById('nav-admin');
         navAdmin.classList.remove('hidden');
@@ -1185,3 +1131,68 @@ window.printKeyTransferReceipt = async (transferId, reloadAfter = false) => {
     }
     if (typeof window.hideLoader === 'function') window.hideLoader();
 };
+
+// Global automatic select option sorting A-Z
+(function () {
+    function sortSelect(select) {
+        if (select.dataset.sorting === 'true' || select.options.length <= 1) return;
+
+        const options = Array.from(select.options);
+        const placeholders = [];
+        const actualOptions = [];
+
+        options.forEach(opt => {
+            const text = opt.text.toLowerCase().trim();
+            if (opt.disabled || opt.value === "" || opt.value === "all" || text.startsWith("select") || text.startsWith("loading") || text.startsWith("all ") || text.includes("no keys") || text.includes("none")) {
+                placeholders.push(opt);
+            } else {
+                actualOptions.push(opt);
+            }
+        });
+
+        if (actualOptions.length <= 1) return;
+
+        let isSorted = true;
+        for (let i = 0; i < actualOptions.length - 1; i++) {
+            if (actualOptions[i].text.toLowerCase().localeCompare(actualOptions[i + 1].text.toLowerCase()) > 0) {
+                isSorted = false;
+                break;
+            }
+        }
+
+        if (!isSorted) {
+            actualOptions.sort((a, b) => a.text.toLowerCase().localeCompare(b.text.toLowerCase()));
+            select.dataset.sorting = 'true';
+            select.innerHTML = '';
+            placeholders.forEach(opt => select.appendChild(opt));
+            actualOptions.forEach(opt => select.appendChild(opt));
+            delete select.dataset.sorting;
+        }
+    }
+
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach(mutation => {
+            if (mutation.type === 'childList') {
+                if (mutation.target.tagName === 'SELECT' && !mutation.target.dataset.sorting) {
+                    sortSelect(mutation.target);
+                }
+                mutation.addedNodes.forEach(node => {
+                    if (node.nodeType === 1) { // ELEMENT_NODE
+                        if (node.tagName === 'SELECT' && !node.dataset.sorting) {
+                            sortSelect(node);
+                        } else if (node.querySelectorAll) {
+                            node.querySelectorAll('select').forEach(sel => {
+                                if (!sel.dataset.sorting) sortSelect(sel);
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        observer.observe(document.body, { childList: true, subtree: true });
+        document.querySelectorAll('select').forEach(sel => sortSelect(sel));
+    });
+})();

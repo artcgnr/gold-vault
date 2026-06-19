@@ -308,7 +308,7 @@ function updateUserFormLockerKey(branchId, lockerSelectId, keySelectId, currentU
 function updateUserFormRoles(branchId, roleSelectId, currentUserId = null) {
     const roleSelect = document.getElementById(roleSelectId);
     if (!roleSelect) return;
-    
+
     const isHr = window.currentUserData && window.currentUserData.role === 'hr';
 
     Array.from(roleSelect.options).forEach(opt => {
@@ -343,7 +343,7 @@ function updateUserFormRoles(branchId, roleSelectId, currentUserId = null) {
             }
         });
     }
-    
+
     // Automatically reset value if the currently selected option is now disabled
     if (roleSelect.options[roleSelect.selectedIndex] && roleSelect.options[roleSelect.selectedIndex].disabled) {
         roleSelect.value = 'user';
@@ -390,7 +390,7 @@ document.getElementById('form-add-user').addEventListener('submit', async (e) =>
             branchUsersSnap.forEach(doc => {
                 const data = doc.data();
                 if (data.is_resigned) return;
-                
+
                 if ((role === 'user1' || role === 'user1and1') && (data.role === 'user1' || data.role === 'user1and1')) {
                     existingUser = data.name || 'Another user';
                 }
@@ -574,8 +574,8 @@ function filterUsers(searchText) {
     const filtered = window.allUsersData.filter(({ data }) => {
         const name = (data.name || '').toLowerCase();
         const email = (data.email || '').toLowerCase();
-        const branchName = data.branch_id && window.branchDataCache && window.branchDataCache[data.branch_id] 
-            ? (window.branchDataCache[data.branch_id].name || '').toLowerCase() 
+        const branchName = data.branch_id && window.branchDataCache && window.branchDataCache[data.branch_id]
+            ? (window.branchDataCache[data.branch_id].name || '').toLowerCase()
             : '';
         return name.includes(searchText) || email.includes(searchText) || branchName.includes(searchText);
     });
@@ -606,10 +606,10 @@ window.resetUserPassword = async (email) => {
 window.openAddUserModal = () => {
     const roleSelect = document.getElementById('new-user-role');
     const isHr = window.currentUserData && window.currentUserData.role === 'hr';
-    
+
     if (roleSelect) {
         Array.from(roleSelect.options).forEach(opt => {
-            if (!opt.value) return; 
+            if (!opt.value) return;
             if (isHr) {
                 if (['user', 'user1', 'user2'].includes(opt.value)) {
                     opt.style.display = '';
@@ -638,12 +638,12 @@ window.openEditUser = (id, name, role, branchId, key1, key2, isResigned = false,
     document.getElementById('edit-user-name').value = name;
     const emailInput = document.getElementById('edit-user-email');
     if (emailInput) emailInput.value = email;
-    
+
     const roleSelect = document.getElementById('edit-user-role');
     const isHr = window.currentUserData && window.currentUserData.role === 'hr';
     if (roleSelect) {
         Array.from(roleSelect.options).forEach(opt => {
-            if (!opt.value) return; 
+            if (!opt.value) return;
             if (isHr) {
                 if (['user', 'user1', 'user2'].includes(opt.value)) {
                     opt.style.display = '';
@@ -658,7 +658,7 @@ window.openEditUser = (id, name, role, branchId, key1, key2, isResigned = false,
             }
         });
     }
-    
+
     document.getElementById('edit-user-role').value = role;
     document.getElementById('edit-user-status').value = isResigned ? 'resigned' : 'active';
     const pwdInput = document.getElementById('edit-user-password');
@@ -719,10 +719,10 @@ document.getElementById('form-edit-user').addEventListener('submit', async (e) =
             let existingUser = null;
             branchUsersSnap.forEach(doc => {
                 if (doc.id === id) return; // skip self
-                
+
                 const data = doc.data();
                 if (data.is_resigned) return;
-                
+
                 if ((role === 'user1' || role === 'user1and1') && (data.role === 'user1' || data.role === 'user1and1')) {
                     existingUser = data.name || 'Another user';
                 }
@@ -895,40 +895,50 @@ async function loadStats(selectedDate = null) {
             });
 
             return `
-                <div class="stat-card glass-panel">
-                    <div class="stat-icon"><i class="fa-solid fa-building"></i></div>
-                    <div class="stat-info">
-                        <h4>Active Branches</h4>
-                        <p>${totalBranches}</p>
+                <div class="overview-stat-card card-blue">
+                    <div class="overview-stat-header">
+                        <span class="overview-stat-title">Active Branches</span>
+                        <div class="overview-stat-icon icon-blue">
+                            <i class="fa-solid fa-building"></i>
+                        </div>
                     </div>
+                    <div class="overview-stat-value">${totalBranches}</div>
                 </div>
-                <div class="stat-card glass-panel">
-                    <div class="stat-icon"><i class="fa-solid fa-check-circle text-success"></i></div>
-                    <div class="stat-info">
-                        <h4>Total Appraised</h4>
-                        <p>${targetAppraised}</p>
+                <div class="overview-stat-card card-green">
+                    <div class="overview-stat-header">
+                        <span class="overview-stat-title">Total Appraised</span>
+                        <div class="overview-stat-icon icon-green">
+                            <i class="fa-solid fa-check-circle"></i>
+                        </div>
                     </div>
+                    <div class="overview-stat-value">${targetAppraised}</div>
                 </div>
-                <div class="stat-card glass-panel">
-                    <div class="stat-icon"><i class="fa-solid fa-clock text-warning"></i></div>
-                    <div class="stat-info">
-                        <h4>Not Appraised</h4>
-                        <p>${targetPending}</p>
+                <div class="overview-stat-card card-orange">
+                    <div class="overview-stat-header">
+                        <span class="overview-stat-title">Not Appraised</span>
+                        <div class="overview-stat-icon icon-orange">
+                            <i class="fa-solid fa-clock"></i>
+                        </div>
                     </div>
+                    <div class="overview-stat-value">${targetPending}</div>
                 </div>
-                <div class="stat-card glass-panel">
-                    <div class="stat-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
-                    <div class="stat-info">
-                        <h4>Total Physical Cash</h4>
-                        <p>₹${totalCash.toLocaleString()}</p>
+                <div class="overview-stat-card card-purple">
+                    <div class="overview-stat-header">
+                        <span class="overview-stat-title">Total Physical Cash</span>
+                        <div class="overview-stat-icon icon-purple">
+                            <i class="fa-solid fa-money-bill-wave"></i>
+                        </div>
                     </div>
+                    <div class="overview-stat-value">₹${totalCash.toLocaleString()}</div>
                 </div>
-                <div class="stat-card glass-panel">
-                    <div class="stat-icon"><i class="fa-solid fa-money-bill-trend-up text-success"></i></div>
-                    <div class="stat-info">
-                        <h4>Total Outstanding Loan</h4>
-                        <p>₹${totalLoan.toLocaleString()}</p>
+                <div class="overview-stat-card card-gold">
+                    <div class="overview-stat-header">
+                        <span class="overview-stat-title">Total Outstanding</span>
+                        <div class="overview-stat-icon icon-gold">
+                            <i class="fa-solid fa-money-bill-trend-up"></i>
+                        </div>
                     </div>
+                    <div class="overview-stat-value">₹${totalLoan.toLocaleString()}</div>
                 </div>
             `;
         };
@@ -973,7 +983,7 @@ async function getDeclarationDaySummary(branchId, date, declarationData = null) 
         stockInEntries: [], stockOutEntries: [], cashEntries: [], appraisalEntries: [],
         approvedCashTotal: 0, approvedAppraised: 0, approvedNotAppraised: 0
     };
-    
+
     const isMaker1and1 = declarationData && declarationData.user2_id === "Auto-1and1";
 
     branchId = String(branchId || '');
@@ -1039,7 +1049,7 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {},
     branchSnap.forEach(b => branchMap[b.id] = b.data());
 
     let parsedDocs = snap.docs.map(d => Object.assign(d.data(), { _id: d.id }));
-    
+
     // Exclude HEAD OFFICE
     parsedDocs = parsedDocs.filter(d => {
         const bData = branchMap[d.branch_id];
@@ -1065,7 +1075,7 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {},
         Object.keys(branchMap).forEach(branchId => {
             const bData = branchMap[branchId];
             if (bData && bData.name && bData.name.toUpperCase() === 'HEAD OFFICE') return;
-            
+
             if (filters.company && filters.company !== 'all' && bData.company !== filters.company) {
                 return;
             }
@@ -1098,9 +1108,9 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {},
                 <td style="vertical-align: center;"><strong>${escapeHtml(branchName)}</strong></td>
                 <td><span class="status-badge status-pending" style="color:#ef4444; background:rgba(239, 68, 68, 0.1);"><i class="fa-solid fa-hourglass-start"></i></span></td>
                 <td><span class="status-badge status-pending" style="color:#ef4444; background:rgba(239, 68, 68, 0.1);"><i class="fa-solid fa-hourglass-start"></span></td>
-                <td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
+                <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                 <td style="vertical-align: center; font-size: .6em;"><span class="status-badge status-pending" style="color:#ef4444; background:rgba(239, 68, 68, 0.1);"><i class="fa-solid fa-x"></i></span></td>
-                
+                <td></td>
             </tr>`;
         }
 
@@ -1129,21 +1139,21 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {},
 
         if (showPrintButtons) {
             if (isComplete && data.print_taken) {
-                printBtnHtml = `<button class="btn btn-icon btn-sm text-primary" onclick="window.printSingleDeclaration('${data.branch_id}', '${data.date}')" title="Print A4 Declaration" style="margin-right: 6px;">
+                printBtnHtml = `<button class="btn btn-icon btn-sm text-primary" onclick="window.printSingleDeclaration('${data.branch_id}', '${data.date}')" title="Print A4 Declaration" style="padding: 0 3px;">
                     <i class="fa-solid fa-print"></i>
                    </button>`;
             } else if (isComplete && !data.print_taken) {
-                printBtnHtml = `<button class="btn btn-icon btn-sm" disabled style="opacity: 0.4; cursor: not-allowed; margin-right: 6px; color: #f59e0b;" title="Waiting for Branch to Print">
+                printBtnHtml = `<button class="btn btn-icon btn-sm" disabled style="opacity: 0.4; cursor: not-allowed; color: #f59e0b; padding: 0 3px;" title="Waiting for Branch to Print">
                     <i class="fa-solid fa-print"></i>
                    </button>`;
             } else {
-                printBtnHtml = `<button class="btn btn-icon btn-sm" disabled style="opacity: 0.4; cursor: not-allowed; margin-right: 6px;" title="Pending Maker & Checker signatures">
+                printBtnHtml = `<button class="btn btn-icon btn-sm" disabled style="opacity: 0.4; cursor: not-allowed; padding: 0 3px;" title="Pending Maker & Checker signatures">
                     <i class="fa-solid fa-print"></i>
                    </button>`;
             }
 
             unlockPrintHtml = data.print_taken
-                ? `<button class="btn btn-icon btn-sm text-success" onclick="enableBranchPrint('${data._id}')" title="Re-enable Branch Print">
+                ? `<button class="btn btn-icon btn-sm text-success" onclick="enableBranchPrint('${data._id}')" title="Re-enable Branch Print" style="padding: 0 3px;">
                     <i class="fa-solid fa-unlock"></i>
                    </button>`
                 : '';
@@ -1153,13 +1163,13 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {},
         let adminActionHtml = '';
         if (showActions && window.currentUserData && window.currentUserData.role === 'admin') {
 
-            deleteBtn = `<button class="btn btn-icon btn-sm text-primary" onclick="deleteDeclaration('${data._id}')" title="Delete Declaration">
+            deleteBtn = `<button class="btn btn-icon btn-sm text-primary" onclick="deleteDeclaration('${data._id}')" title="Delete Declaration" style="padding: 0 2px;">
                 <i class="fa-solid fa-trash-can"></i>
             </button>`;
         }
 
         const actionHtml = data._id ? `
-            <div style="display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 2px;">
+            <div style="display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 5px;">
                 ${adminActionHtml}
                 ${printBtnHtml}
                 ${unlockPrintHtml}
@@ -1168,8 +1178,8 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {},
         ` : '-';
 
         return `<tr>
-            <td style="vertical-align: top;">${escapeHtml(formatDateDisplay(data.date))}</td>
-            <td style="vertical-align: top;">${escapeHtml(branchName)}</td>
+            <td>${escapeHtml(formatDateDisplay(data.date))}</td>
+            <td>${escapeHtml(branchName)}</td>
             <td>${makerInfo}</td><td>${checkerInfo}</td>
             <td>${formatStockNumbers(approvedSummary.stockInEntries)}</td>
             <td>${formatStockNumbers(approvedSummary.stockOutEntries)}</td>
@@ -1178,7 +1188,7 @@ async function renderDeclarationTable(tableSelector, limit = null, filters = {},
             <td>${approvedSummary.approvedNotAppraised}</td>
             <td>${totalStockInLocker}</td>
             <td>${formatCurrencyValue(outstandingLoan)}</td>
-            <td style="vertical-align: center;">${finalStatus}</td>
+            <td style="vertical-align: center; font-size: 0.6rem; ">${finalStatus}</td>
             <td>${actionHtml}</td>
         </tr>`;
     }));
@@ -1420,7 +1430,7 @@ async function loadAdminReports(filters = {}) {
             filters.fromDate = today;
             filters.toDate = today;
         }
-        
+
         const totalReports = await renderDeclarationTable('#table-admin-reports', null, filters);
         const summText = document.querySelector('.report-summary');
         if (summText) summText.textContent = `Total: ${totalReports} Report(s)`;
@@ -2441,9 +2451,9 @@ if (formWeeklyAnalysis) {
 
         window.showLoader();
         try {
-            document.getElementById('wa-header-prev').textContent = compareDate;
-            document.getElementById('wa-header-curr').textContent = baseDate;
-            document.getElementById('wa-print-subtitle').textContent = `Comparison: ${compareDate} to ${baseDate}`;
+            document.getElementById('wa-header-prev').textContent = formatDateDisplay(compareDate);
+            document.getElementById('wa-header-curr').textContent = formatDateDisplay(baseDate);
+            document.getElementById('wa-print-subtitle').textContent = `Comparison: ${formatDateDisplay(compareDate)} to ${formatDateDisplay(baseDate)}`;
 
             // Fetch declarations for compareDate
             const prevSnap = await window.db.collection('declarations')
@@ -2484,7 +2494,7 @@ if (formWeeklyAnalysis) {
                     const pData = prevData[branch.id];
                     const cData = currData[branch.id];
 
-                    if (!pData && !cData) return; 
+                    if (!pData && !cData) return;
 
                     const prevLoan = pData && typeof pData.outstanding_loan === 'number' ? pData.outstanding_loan : 0;
                     const currLoan = cData && typeof cData.outstanding_loan === 'number' ? cData.outstanding_loan : 0;
@@ -2512,7 +2522,7 @@ if (formWeeklyAnalysis) {
                     hasData = true;
                 });
             }
-            
+
             const tfoot = document.getElementById('wa-table-foot');
             const summaryTd = document.getElementById('wa-summary-totals');
             if (tfoot && summaryTd) {
@@ -2553,13 +2563,13 @@ window.printWeeklyAnalysis = () => {
         return;
     }
     printWindow.document.write('<!DOCTYPE html><html><head><title>Weekly Analysis</title>');
-    
+
     // Bring in existing styles
     const styles = document.querySelectorAll('link[rel="stylesheet"], style');
     styles.forEach(style => {
         printWindow.document.write(style.outerHTML);
     });
-    
+
     // Add specifically tailored A4 print styles
     printWindow.document.write(`
         <style>
@@ -2630,7 +2640,7 @@ window.printWeeklyAnalysis = () => {
     printWindow.document.write('</head><body>');
     printWindow.document.write(printContents);
     printWindow.document.write('</body></html>');
-    
+
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => {
@@ -2647,7 +2657,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date();
         const lastWeek = new Date();
         lastWeek.setDate(today.getDate() - 7);
-        
+
         baseDateInput.value = today.toISOString().split('T')[0];
         compareDateInput.value = lastWeek.toISOString().split('T')[0];
     }

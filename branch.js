@@ -86,7 +86,7 @@ async function loadUser1Entries() {
 
         if (btnStockIn) { btnStockIn.disabled = false; btnStockIn.innerHTML = 'Submit Gold IN'; }
         if (btnStockOut) { btnStockOut.disabled = false; btnStockOut.innerHTML = 'Submit Gold OUT'; }
-        if (btnCash) { btnCash.disabled = false; btnCash.innerHTML = '<i class="fa-solid fa-money-bill-wave"></i> Submit Cash'; }
+        if (btnCash) { btnCash.disabled = false; btnCash.innerHTML = 'Submit'; }
         if (btnAppraisals) { btnAppraisals.disabled = false; btnAppraisals.innerHTML = '<i class="fa-solid fa-upload"></i> Submit Appraisals'; }
         if (btnBranchTotals) { btnBranchTotals.disabled = false; btnBranchTotals.innerHTML = '<i class="fa-solid fa-upload"></i> Update Totals'; }
 
@@ -98,8 +98,8 @@ async function loadUser1Entries() {
 
                 if (txDateObj >= startOfDay && txDateObj <= endOfDay) {
                     entries.push({ id: doc.id, collection: 'stock_transactions', time: txDateObj, type: 'Stock ' + d.type, details: d.stock_number, status: d.status });
-                    if (d.type === 'IN' && btnStockIn) { btnStockIn.disabled = true; btnStockIn.innerHTML = 'Submitted for Date'; }
-                    if (d.type === 'OUT' && btnStockOut) { btnStockOut.disabled = true; btnStockOut.innerHTML = 'Submitted for Date'; }
+                    if (d.type === 'IN' && btnStockIn) { btnStockIn.disabled = true; btnStockIn.innerHTML = 'Submitted'; }
+                    if (d.type === 'OUT' && btnStockOut) { btnStockOut.disabled = true; btnStockOut.innerHTML = 'Submitted'; }
                 }
             });
         } catch (e) { console.error("Stock fetch error:", e); }
@@ -112,7 +112,7 @@ async function loadUser1Entries() {
 
                 if (txDateObj >= startOfDay && txDateObj <= endOfDay) {
                     entries.push({ id: doc.id, collection: 'cash_entries', time: txDateObj, type: 'Cash', details: '₹' + d.total_amount, status: d.status });
-                    if (btnCash) { btnCash.disabled = true; btnCash.innerHTML = 'Submitted for Date'; }
+                    if (btnCash) { btnCash.disabled = true; btnCash.innerHTML = 'Submitted'; }
                 }
             });
         } catch (e) { console.error("Cash fetch error:", e); }
@@ -125,7 +125,7 @@ async function loadUser1Entries() {
 
                 if (txDateObj >= startOfDay && txDateObj <= endOfDay) {
                     entries.push({ id: doc.id, collection: 'daily_appraisals', time: txDateObj, type: 'Appraisals', details: `${d.appraised} Appraised, ${d.not_appraised || 0} Not Appraised`, status: d.status });
-                    if (btnAppraisals) { btnAppraisals.disabled = true; btnAppraisals.innerHTML = 'Submitted for Date'; }
+                    if (btnAppraisals) { btnAppraisals.disabled = true; btnAppraisals.innerHTML = 'Submitted'; }
                 }
             });
         } catch (e) { console.error("Appraisals fetch error:", e); }
@@ -137,7 +137,7 @@ async function loadUser1Entries() {
                 const d = docSnap.data();
                 const txDateObj = d.timestamp && typeof d.timestamp.toDate === 'function' ? d.timestamp.toDate() : new Date();
                 entries.push({ id: docSnap.id, collection: 'daily_totals', time: txDateObj, type: 'Branch Totals', details: `Stock: ${d.total_stock}, Loan: ₹${d.outstanding_loan.toLocaleString()}`, status: d.status || 'approved' });
-                if (btnBranchTotals) { btnBranchTotals.disabled = true; btnBranchTotals.innerHTML = 'Submitted for Date'; }
+                if (btnBranchTotals) { btnBranchTotals.disabled = true; btnBranchTotals.innerHTML = 'Submitted'; }
             }
         } catch (e) { console.error("Totals fetch error:", e); }
 
@@ -157,11 +157,11 @@ async function loadUser1Entries() {
 
                 if (btnBranchTotals) { btnBranchTotals.disabled = true; btnBranchTotals.innerHTML = 'Locked'; }
             } else {
-                let allDataEntered = (btnStockIn && btnStockIn.disabled) && 
-                                     (btnStockOut && btnStockOut.disabled) && 
-                                     (btnCash && btnCash.disabled) && 
-                                     (btnAppraisals && btnAppraisals.disabled) && 
-                                     (btnBranchTotals && btnBranchTotals.disabled);
+                let allDataEntered = (btnStockIn && btnStockIn.disabled) &&
+                    (btnStockOut && btnStockOut.disabled) &&
+                    (btnCash && btnCash.disabled) &&
+                    (btnAppraisals && btnAppraisals.disabled) &&
+                    (btnBranchTotals && btnBranchTotals.disabled);
 
                 if (allDataEntered) {
                     document.getElementById('btn-u1-declare').disabled = false;
@@ -173,7 +173,7 @@ async function loadUser1Entries() {
                     document.getElementById('u1-declare-status').innerHTML = '<span class="text-warning"><i class="fa-solid fa-triangle-exclamation"></i> Please submit Gold IN, Gold OUT, Cash, Appraisals, and Branch Totals before signing.</span>';
                 }
 
-                if (btnBranchTotals && btnBranchTotals.innerHTML !== 'Submitted for Date') { btnBranchTotals.disabled = false; btnBranchTotals.innerHTML = '<i class="fa-solid fa-upload"></i> Update Totals'; }
+                if (btnBranchTotals && btnBranchTotals.innerHTML !== 'Submitted') { btnBranchTotals.disabled = false; btnBranchTotals.innerHTML = '<i class="fa-solid fa-upload"></i> Update Totals'; }
             }
         } catch (e) { console.error("Declaration fetch error:", e); }
 
@@ -1040,11 +1040,11 @@ async function loadBranchReports(tableId, filterFrom = null, filterTo = null) {
             const isAdmin = window.currentUserData.role === 'admin';
 
             if (!isComplete) {
-                printBtnHtml = `<button class="btn btn-secondary btn-sm" disabled style="padding: 4px 10px; font-size: 12px; opacity: 0.5; cursor: not-allowed; display: inline-flex; align-items: center; gap: 4px;" title="Pending Maker & Checker signatures"><i class="fa-solid fa-print"></i> Print</button>`;
+                printBtnHtml = `<button class="btn btn-secondary btn-sm" disabled style="height: 20px; font-size: 8px; opacity: 0.5; cursor: not-allowed; display: inline-flex; align-items: center; gap: 4px;" title="Pending Maker & Checker signatures"><i class="fa-solid fa-print"></i> Print</button>`;
             } else if (data.print_taken && !isAdmin) {
                 printBtnHtml = `<span class="status-badge" style="background: rgba(107, 114, 128, 0.2); color: #6b7280; font-size: 11px;"><i class="fa-solid fa-check"></i> Printed</span>`;
             } else {
-                printBtnHtml = `<button class="btn btn-primary btn-sm" onclick="window.printSingleDeclaration('${rowBranchId}', '${data.date}')" style="padding: 4px 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-print"></i> Print</button>`;
+                printBtnHtml = `<button class="btn btn-primary btn-sm" onclick="window.printSingleDeclaration('${rowBranchId}', '${data.date}')" style="height: 20px; width: 58px; font-size: 10px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-print"></i> Print</button>`;
             }
 
             return `
@@ -1191,11 +1191,22 @@ async function loadKeyTransferBranches() {
     try {
         const snap = await window.db.collection("branches").get();
         selectBranch.innerHTML = '<option value="" disabled selected>Select Branch...</option>';
+
+        // Convert to array and sort A to Z by name
+        const branchesArray = [];
         snap.forEach(doc => {
-            const data = doc.data();
+            branchesArray.push({ id: doc.id, data: doc.data() });
+        });
+        branchesArray.sort((a, b) => {
+            const nameA = (a.data.name || '').trim().toLowerCase();
+            const nameB = (b.data.name || '').trim().toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+
+        branchesArray.forEach(branch => {
             const opt = document.createElement('option');
-            opt.value = doc.id;
-            opt.textContent = data.name || doc.id;
+            opt.value = branch.id;
+            opt.textContent = branch.data.name || branch.id;
             selectBranch.appendChild(opt);
         });
 
@@ -1218,17 +1229,31 @@ async function loadKeyTransferUsers(branchId) {
 
     const snap = await window.db.collection("users").where("branch_id", "==", branchId).get();
     select.innerHTML = '<option value="" disabled selected>Select User...</option>';
+
+    // Convert to array and sort A to Z by name
+    const usersArray = [];
     let hasUsers = false;
     snap.forEach(doc => {
         if (doc.id !== window.currentUser.uid) {
             hasUsers = true;
             const data = doc.data();
-            const opt = document.createElement('option');
-            opt.value = doc.id;
-            opt.dataset.name = data.name;
-            opt.textContent = `${data.name} (${data.role})`;
-            select.appendChild(opt);
+            usersArray.push({ id: doc.id, name: data.name, role: data.role });
         }
+    });
+
+    // Sort users A to Z by name
+    usersArray.sort((a, b) => {
+        const nameA = (a.name || '').trim().toLowerCase();
+        const nameB = (b.name || '').trim().toLowerCase();
+        return nameA.localeCompare(nameB);
+    });
+
+    usersArray.forEach(user => {
+        const opt = document.createElement('option');
+        opt.value = user.id;
+        opt.dataset.name = user.name;
+        opt.textContent = `${user.name} (${user.role})`;
+        select.appendChild(opt);
     });
 
     if (hasUsers) {
