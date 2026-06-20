@@ -1869,7 +1869,12 @@ async function loadAdminKeyHoldingsReport(filters = {}) {
         tbody.innerHTML = '';
         let shownCount = 0;
 
-        Object.keys(branchMap).forEach(branchId => {
+        const sortedBranchIds = Object.keys(branchMap).sort((a, b) => {
+            const nameA = (branchMap[a] || a).toLowerCase();
+            const nameB = (branchMap[b] || b).toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+        sortedBranchIds.forEach(branchId => {
             if (filters.branchId && filters.branchId !== 'all' && branchId !== filters.branchId) return;
             const assignedUsers = users.filter(u => String(u.branch_id || '') === branchId);
             const activeUsers = users.filter(u => u.effective_branch_id === branchId);
