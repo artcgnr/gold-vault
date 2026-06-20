@@ -859,7 +859,7 @@ async function loadStats(selectedDate = null) {
 
                 let bStock = branchData.total_stock || 0;
                 let bLoan = branchData.outstanding_loan || 0;
-                let bCash = branchData.physical_cash || 0;
+                let bCash = 0;
 
                 const dDoc = declarationsSnap.docs.find(d => d.data().branch_id === branchId);
                 if (dDoc) {
